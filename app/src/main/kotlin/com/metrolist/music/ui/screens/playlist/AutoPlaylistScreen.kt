@@ -568,6 +568,7 @@ fun AutoPlaylistScreen(
                         }
 
                         SongListItem(
+                            showThumbnail = false,
                             song = song,
                             isActive = song.song.id == mediaMetadata?.id,
                             isPlaying = isPlaying,

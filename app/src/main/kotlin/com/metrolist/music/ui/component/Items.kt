@@ -46,6 +46,8 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.MutableState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
@@ -248,6 +250,8 @@ private fun ArtistLinksText(
     )
 }
 
+val LocalShowListThumbnail = androidx.compose.runtime.compositionLocalOf { true }
+
 @Composable
 inline fun ListItem(
     modifier: Modifier = Modifier,
@@ -283,32 +287,36 @@ inline fun ListItem(
                 .padding(horizontal = 8.dp)
         }
     ) {
-        Box(
-            modifier = Modifier.padding(6.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            thumbnailContent()
-            if (!isAvailable) {
-                Box(
-                    modifier = Modifier
-                        .size(ListThumbnailSize)
-                        .align(Alignment.Center)
-                        .background(
-                            Color.Black.copy(alpha = 0.25f),
-                            RoundedCornerShape(ThumbnailCornerRadius)
-                        )
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.offline),
-                        contentDescription = null,
-                        tint = Color.White,
+        if (LocalShowListThumbnail.current) {
+            Box(
+                modifier = Modifier.padding(6.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                thumbnailContent()
+                if (!isAvailable) {
+                    Box(
                         modifier = Modifier
-                            .size(ListThumbnailSize / 2)
+                            .size(ListThumbnailSize)
                             .align(Alignment.Center)
-                            .graphicsLayer { alpha = 1f }
-                    )
+                            .background(
+                                Color.Black.copy(alpha = 0.25f),
+                                RoundedCornerShape(ThumbnailCornerRadius)
+                            )
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.offline),
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier
+                                .size(ListThumbnailSize / 2)
+                                .align(Alignment.Center)
+                                .graphicsLayer { alpha = 1f }
+                        )
+                    }
                 }
             }
+        } else {
+            Spacer(Modifier.width(8.dp))
         }
         Column(
             modifier = Modifier
@@ -508,13 +516,14 @@ fun SongListItem(
     isSelected: Boolean = false,
     isActive: Boolean = false,
     isPlaying: Boolean = false,
+    showThumbnail: Boolean = true,
     isSwipeable: Boolean = true,
     trailingContent: @Composable RowScope.() -> Unit = {},
 ) {
     val artistNameAliases = LocalArtistNameAliases.current
     val swipeEnabled by rememberPreference(SwipeToSongKey, defaultValue = false)
 
-    val content: @Composable () -> Unit = {
+    val rawContent: @Composable () -> Unit = {
          ListItem(
              title = song.song.title,
              subtitle = {
@@ -562,6 +571,12 @@ fun SongListItem(
              isActive = isActive
          )
      }
+
+    val content: @Composable () -> Unit = {
+        androidx.compose.runtime.CompositionLocalProvider(LocalShowListThumbnail provides showThumbnail) {
+            rawContent()
+        }
+    }
 
     if (isSwipeable && swipeEnabled) {
         SwipeToSongBox(
@@ -1126,6 +1141,7 @@ fun YouTubeListItem(
     isSelected: Boolean = false,
     isActive: Boolean = false,
     isPlaying: Boolean = false,
+    showThumbnail: Boolean = true,
     isSwipeable: Boolean = true,
     trailingContent: @Composable RowScope.() -> Unit = {},
     badges: @Composable RowScope.() -> Unit = {
@@ -1156,7 +1172,7 @@ fun YouTubeListItem(
     val artistNameAliases = LocalArtistNameAliases.current
     val artistSeparator = " ${stringResource(R.string.and)} "
 
-    val content: @Composable () -> Unit = {
+    val rawContent: @Composable () -> Unit = {
         ListItem(
             title =
                 if (item is ArtistItem) {
@@ -1216,6 +1232,12 @@ fun YouTubeListItem(
             modifier = modifier,
             isActive = isActive
         )
+    }
+
+    val content: @Composable () -> Unit = {
+        androidx.compose.runtime.CompositionLocalProvider(LocalShowListThumbnail provides showThumbnail) {
+            rawContent()
+        }
     }
 
     if (item is SongItem && isSwipeable && swipeEnabled) {

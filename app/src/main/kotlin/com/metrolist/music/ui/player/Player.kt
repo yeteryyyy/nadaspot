@@ -884,18 +884,19 @@ fun BottomSheetPlayer(
                             label = "gradientBackground",
                         ) { colors ->
                             if (colors.isNotEmpty()) {
+                                // Spotify 2018: muted album tint at the top, easing down to near-black
+                                val tintTop = androidx.compose.ui.graphics.lerp(colors[0], Color.Black, 0.5f)
                                 val gradientColorStops =
                                     arrayOf(
-                                        0.0f to colors[0].copy(alpha = 0.75f),
-                                        0.55f to Color(0xFF121212),
-                                        1.0f to Color(0xFF121212),
+                                        0.0f to tintTop,
+                                        0.45f to androidx.compose.ui.graphics.lerp(tintTop, Color(0xFF121212), 0.55f),
+                                        1.0f to androidx.compose.ui.graphics.lerp(tintTop, Color(0xFF0C0C0C), 0.9f),
                                     )
                                 Box(
                                     Modifier
                                         .fillMaxSize()
                                         .alpha(backgroundAlpha)
-                                        .background(Brush.verticalGradient(colorStops = gradientColorStops))
-                                        .background(Color.Black.copy(alpha = 0.2f)),
+                                        .background(Brush.verticalGradient(colorStops = gradientColorStops)),
                                 )
                             }
                         }

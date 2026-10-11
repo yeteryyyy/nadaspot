@@ -463,6 +463,7 @@ private fun ThumbnailHeader(
                     "PLAYING FROM PLAYLIST"
                 },
                 fontSize = 11.sp,
+                fontFamily = com.metrolist.music.ui.theme.SpotifyFontFamily,
                 letterSpacing = 1.5.sp,
                 fontWeight = FontWeight.Normal,
                 color = textColor.copy(alpha = 0.7f),
@@ -473,6 +474,7 @@ private fun ThumbnailHeader(
                 Text(
                     text = playingFrom,
                     fontSize = 14.sp,
+                    fontFamily = com.metrolist.music.ui.theme.SpotifyFontFamily,
                     fontWeight = FontWeight.Bold,
                     color = textColor,
                     maxLines = 1,

@@ -822,7 +822,12 @@ class MainActivity : FragmentActivity() {
                     remember(currentRoute, navigationItemRoutes) {
                         currentRoute == null ||
                             navigationItemRoutes.contains(currentRoute) ||
-                            currentRoute!!.startsWith("search/")
+                            currentRoute!!.startsWith("search/") ||
+                            currentRoute!!.startsWith("local_playlist/") ||
+                            currentRoute!!.startsWith("online_playlist/") ||
+                            currentRoute!!.startsWith("auto_playlist/") ||
+                            currentRoute!!.startsWith("cache_playlist/") ||
+                            currentRoute!!.startsWith("top_playlist/")
                     }
 
                 val isLandscape = configuration.containerDpSize.width > configuration.containerDpSize.height

@@ -261,6 +261,7 @@ fun CachePlaylistScreen(
                     }
 
                     SongListItem(
+                        showThumbnail = false,
                         song = song,
                         isActive = song.id == mediaMetadata?.id,
                         isPlaying = isPlaying,

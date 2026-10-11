@@ -17,6 +17,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -612,6 +613,7 @@ fun LocalPlaylistScreen(
 
                     val content: @Composable () -> Unit = {
                         SongListItem(
+                            showThumbnail = false,
                             song = song.song,
                             isActive = song.song.id == mediaMetadata?.id,
                             isPlaying = isPlaying,
@@ -1047,6 +1049,61 @@ fun LocalPlaylistHeader(
                 )
             }
         }
+        // Spotify 2018: the playlist menu opens from the cover instead of a button
+        val openPlaylistMenu: () -> Unit = {
+        menuState.show {
+            LocalPlaylistMenu(
+                playlist = playlist,
+                songs = songs,
+                context = context,
+                downloadState = downloadState,
+                onEdit = onShowEditDialog,
+                onSync = {
+                    scope.launch(Dispatchers.IO) {
+                        syncUtils.syncPlaylistSuspend(
+                            playlist.playlist.browseId!!,
+                            playlist.id,
+                        )
+                        withContext(Dispatchers.Main) {
+                            snackbarHostState.showSnackbar(playlistSyncedStr)
+                        }
+                    }
+                },
+                onDelete = onshowDeletePlaylistDialog,
+                onDownload = {
+                    when (downloadState) {
+                        Download.STATE_COMPLETED -> {
+                            onShowRemoveDownloadDialog()
+                        }
+
+                        Download.STATE_DOWNLOADING -> {
+                            songs.forEach { song ->
+                                DownloadService.sendRemoveDownload(
+                                    context,
+                                    ExoDownloadService::class.java,
+                                    song.song.id,
+                                    false,
+                                )
+                            }
+                        }
+
+                        else -> {
+                            songs.forEach { song ->
+                                downloadUtil.download(song.song)
+                            }
+                        }
+                    }
+                },
+                onQueue = {
+                    playerConnection.addToQueue(
+                        items = songs.map { it.song.toMediaItem() },
+                    )
+                },
+                onDismiss = { menuState.dismiss() },
+            )
+        }
+        }
+
         // Playlist Thumbnail(s) - Large centered with shadow
         Box(
             modifier = Modifier.padding(top = 8.dp, bottom = 20.dp),
@@ -1057,6 +1114,7 @@ fun LocalPlaylistHeader(
                         modifier =
                             Modifier
                                 .size(240.dp)
+                                .clickable(onClick = openPlaylistMenu)
                                 .shadow(
                                     elevation = 16.dp,
                                     shape = RoundedCornerShape(3.dp),
@@ -1083,6 +1141,7 @@ fun LocalPlaylistHeader(
                         modifier =
                             Modifier
                                 .size(240.dp)
+                                .clickable(onClick = openPlaylistMenu)
                                 .shadow(
                                     elevation = 24.dp,
                                     shape = RoundedCornerShape(3.dp),
@@ -1152,6 +1211,7 @@ fun LocalPlaylistHeader(
                         modifier =
                             Modifier
                                 .size(240.dp)
+                                .clickable(onClick = openPlaylistMenu)
                                 .shadow(
                                     elevation = 24.dp,
                                     shape = RoundedCornerShape(3.dp),
@@ -1337,7 +1397,7 @@ fun LocalPlaylistHeader(
                 modifier =
                     Modifier
                         .height(48.dp)
-                        .widthIn(min = 220.dp),
+                        .fillMaxWidth(0.8f),
             ) {
                 Box(
                     modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp),
@@ -1345,82 +1405,12 @@ fun LocalPlaylistHeader(
                 ) {
                     Text(
                         text = stringResource(R.string.shuffle_play),
-                        color = MaterialTheme.colorScheme.onPrimary,
+                        color = Color.White,
                         fontSize = 14.sp,
+                        fontFamily = com.metrolist.music.ui.theme.SpotifyFontFamily,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 2.sp,
                         maxLines = 1,
-                    )
-                }
-            }
-
-            // Menu Button - Smaller secondary button
-            Surface(
-                onClick = {
-                    menuState.show {
-                        LocalPlaylistMenu(
-                            playlist = playlist,
-                            songs = songs,
-                            context = context,
-                            downloadState = downloadState,
-                            onEdit = onShowEditDialog,
-                            onSync = {
-                                scope.launch(Dispatchers.IO) {
-                                    syncUtils.syncPlaylistSuspend(
-                                        playlist.playlist.browseId!!,
-                                        playlist.id,
-                                    )
-                                    withContext(Dispatchers.Main) {
-                                        snackbarHostState.showSnackbar(playlistSyncedStr)
-                                    }
-                                }
-                            },
-                            onDelete = onshowDeletePlaylistDialog,
-                            onDownload = {
-                                when (downloadState) {
-                                    Download.STATE_COMPLETED -> {
-                                        onShowRemoveDownloadDialog()
-                                    }
-
-                                    Download.STATE_DOWNLOADING -> {
-                                        songs.forEach { song ->
-                                            DownloadService.sendRemoveDownload(
-                                                context,
-                                                ExoDownloadService::class.java,
-                                                song.song.id,
-                                                false,
-                                            )
-                                        }
-                                    }
-
-                                    else -> {
-                                        songs.forEach { song ->
-                                            downloadUtil.download(song.song)
-                                        }
-                                    }
-                                }
-                            },
-                            onQueue = {
-                                playerConnection.addToQueue(
-                                    items = songs.map { it.song.toMediaItem() },
-                                )
-                            },
-                            onDismiss = { menuState.dismiss() },
-                        )
-                    }
-                },
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.size(48.dp),
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.more_vert),
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp),
                     )
                 }
             }

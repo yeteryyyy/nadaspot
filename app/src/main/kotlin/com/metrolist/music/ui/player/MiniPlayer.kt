@@ -215,6 +215,7 @@ private fun SpotifyMiniPlayer(
                     text = metadata.title,
                     color = Color.White,
                     fontSize = 14.sp,
+                    fontFamily = com.metrolist.music.ui.theme.SpotifyFontFamily,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -225,6 +226,7 @@ private fun SpotifyMiniPlayer(
                         text = " \u2022 $artistText",
                         color = com.metrolist.music.ui.theme.SpotifyGrey,
                         fontSize = 14.sp,
+                        fontFamily = com.metrolist.music.ui.theme.SpotifyFontFamily,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false),
@@ -259,11 +261,11 @@ private fun SpotifyMiniPlayer(
             }
         }
 
-        // Hairline progress along the bottom edge
+        // Hairline progress along the top edge
         Box(
             modifier =
                 Modifier
-                    .align(Alignment.BottomStart)
+                    .align(Alignment.TopStart)
                     .fillMaxWidth()
                     .height(2.dp)
                     .background(Color.White.copy(alpha = 0.15f)),
@@ -271,7 +273,7 @@ private fun SpotifyMiniPlayer(
         Box(
             modifier =
                 Modifier
-                    .align(Alignment.BottomStart)
+                    .align(Alignment.TopStart)
                     .fillMaxWidth()
                     .height(2.dp)
                     .drawWithContent {
