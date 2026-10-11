@@ -107,6 +107,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.border
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -149,6 +151,7 @@ import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.PlayerButtonsStyle
 import com.metrolist.music.constants.PlayerButtonsStyleKey
 import com.metrolist.music.constants.PlayerHorizontalPadding
+import com.metrolist.music.constants.SpotifyArtPadding
 import com.metrolist.music.constants.QueuePeekHeight
 import com.metrolist.music.constants.SleepTimerDefaultKey
 import com.metrolist.music.constants.SleepTimerFadeOutKey
@@ -217,11 +220,12 @@ fun BottomSheetPlayer(
     val bottomSheetPageState = LocalBottomSheetPageState.current
     val playerConnection = LocalPlayerConnection.current ?: return
 
-    val (useNewPlayerDesign, onUseNewPlayerDesignChange) =
+    val (_, onUseNewPlayerDesignChange) =
         rememberPreference(
             UseNewPlayerDesignKey,
-            defaultValue = true,
+            defaultValue = false,
         )
+    val useNewPlayerDesign = false // Spotify 2018 transport layout
     val (hidePlayerThumbnail, onHidePlayerThumbnailChange) = rememberPreference(HidePlayerThumbnailKey, false)
     val (hideStatusBarOnFullscreen) = rememberPreference(HideStatusBarOnFullscreenKey, false)
     val cropAlbumArt by rememberPreference(CropAlbumArtKey, false)
@@ -234,20 +238,14 @@ fun BottomSheetPlayer(
         mutableStateOf(false)
     }
 
-    val playerBackground by rememberEnumPreference(
-        key = PlayerBackgroundStyleKey,
-        defaultValue = PlayerBackgroundStyle.DEFAULT,
-    )
-    val playerButtonsStyle by rememberEnumPreference(
-        key = PlayerButtonsStyleKey,
-        defaultValue = PlayerButtonsStyle.DEFAULT,
-    )
+    val playerBackground = PlayerBackgroundStyle.GRADIENT
+    val playerButtonsStyle = PlayerButtonsStyle.DEFAULT
 
     val isSystemInDarkTheme = isSystemInDarkTheme()
     val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
     val useDarkTheme =
         remember(darkTheme, isSystemInDarkTheme) {
-            if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
+            true
         }
 
     val shouldUseDarkButtonColors =
@@ -887,19 +885,11 @@ fun BottomSheetPlayer(
                         ) { colors ->
                             if (colors.isNotEmpty()) {
                                 val gradientColorStops =
-                                    if (colors.size >= 3) {
-                                        arrayOf(
-                                            0.0f to colors[0],
-                                            0.5f to colors[1],
-                                            1.0f to colors[2],
-                                        )
-                                    } else {
-                                        arrayOf(
-                                            0.0f to colors[0],
-                                            0.6f to colors[0].copy(alpha = 0.7f),
-                                            1.0f to Color.Black,
-                                        )
-                                    }
+                                    arrayOf(
+                                        0.0f to colors[0].copy(alpha = 0.75f),
+                                        0.55f to Color(0xFF121212),
+                                        1.0f to Color(0xFF121212),
+                                    )
                                 Box(
                                     Modifier
                                         .fillMaxSize()
@@ -991,7 +981,29 @@ fun BottomSheetPlayer(
                         Spacer(modifier = Modifier.width(0.dp))
                     }
                 }
+                if (!useNewPlayerDesign) {
+                    val isEpisodeFav = currentSong?.song?.isEpisode == true
+                    val isLiked =
+                        if (isEpisodeFav) currentSong?.song?.inLibrary != null else currentSong?.song?.liked == true
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier =
+                            Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .clickable(onClick = playerConnection::toggleLike),
+                    ) {
+                        Icon(
+                            painter = painterResource(if (isLiked) R.drawable.spotify_check else R.drawable.spotify_add),
+                            contentDescription = null,
+                            tint = if (isLiked) MaterialTheme.colorScheme.primary else TextBackgroundColor,
+                            modifier = Modifier.size(28.dp),
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
                 Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.weight(1f),
                 ) {
                     AnimatedContent(
@@ -1001,13 +1013,16 @@ fun BottomSheetPlayer(
                     ) { title ->
                         Text(
                             text = title,
-                            style = MaterialTheme.typography.titleLarge,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             color = TextBackgroundColor,
                             modifier =
                                 Modifier
+                                    .fillMaxWidth()
                                     .basicMarquee(iterations = 1, initialDelayMillis = 3000, velocity = 30.dp)
                                     .combinedClickable(
                                         enabled = true,
@@ -1034,7 +1049,7 @@ fun BottomSheetPlayer(
                     }
 
                     Row(
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         if (mediaMetadata.explicit) MIcon.Explicit()
@@ -1045,7 +1060,7 @@ fun BottomSheetPlayer(
                                     mediaMetadata.artists.forEachIndexed { index, artist ->
                                         val tag = "artist_${artist.id.orEmpty()}"
                                         pushStringAnnotation(tag = tag, annotation = artist.id.orEmpty())
-                                        withStyle(SpanStyle(color = TextBackgroundColor, fontSize = 16.sp)) {
+                                        withStyle(SpanStyle(color = com.metrolist.music.ui.theme.SpotifyGrey, fontSize = 14.sp)) {
                                             append(artist.name)
                                         }
                                         pop()
@@ -1054,22 +1069,20 @@ fun BottomSheetPlayer(
                                 }
 
                             Box(
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .basicMarquee(iterations = 1, initialDelayMillis = 3000, velocity = 30.dp)
-                                        .padding(end = 12.dp),
+                                modifier = Modifier.fillMaxWidth(),
                             ) {
                                 var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
                                 var clickOffset by remember { mutableStateOf<Offset?>(null) }
                                 Text(
                                     text = annotatedString,
-                                    style = MaterialTheme.typography.titleMedium.copy(color = TextBackgroundColor),
+                                    style = MaterialTheme.typography.titleMedium.copy(color = com.metrolist.music.ui.theme.SpotifyGrey, textAlign = TextAlign.Center, fontWeight = FontWeight.Normal),
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                     onTextLayout = { layoutResult = it },
                                     modifier =
                                         Modifier
+                                            .fillMaxWidth()
+                                            .basicMarquee(iterations = 1, initialDelayMillis = 3000, velocity = 30.dp)
                                             .pointerInput(Unit) {
                                                 awaitPointerEventScope {
                                                     while (true) {
@@ -1262,7 +1275,7 @@ fun BottomSheetPlayer(
                         }
                     }
                 } else {
-                    AnimatedContent(targetState = showInlineLyrics, label = "ShareButton") { showLyrics ->
+                    if (showInlineLyrics) AnimatedContent(targetState = showInlineLyrics, label = "ShareButton") { showLyrics ->
                         if (showLyrics) {
                             Box(
                                 modifier =
@@ -1315,7 +1328,7 @@ fun BottomSheetPlayer(
                         }
                     }
 
-                    Spacer(modifier = Modifier.size(12.dp))
+                    if (showInlineLyrics) Spacer(modifier = Modifier.size(12.dp))
 
                     AnimatedContent(targetState = showInlineLyrics, label = "LikeButton") { showLyrics ->
                         if (showLyrics) {
@@ -1370,9 +1383,14 @@ fun BottomSheetPlayer(
 
             when (sliderStyle) {
                 SliderStyle.DEFAULT -> {
+                    val sliderValue = (sliderPosition ?: effectivePosition).toFloat()
+                    val sliderRange = 0f..(if (duration == C.TIME_UNSET) 0f else duration.toFloat())
+                    val sliderState = remember(sliderRange) {
+                        SliderState(value = sliderValue, trackRange = sliderRange)
+                    }
+                    sliderState.value = sliderValue
                     Slider(
-                        value = (sliderPosition ?: effectivePosition).toFloat(),
-                        valueRange = 0f..(if (duration == C.TIME_UNSET) 0f else duration.toFloat()),
+                        state = sliderState,
                         onValueChange = {
                             if (!isListenTogetherGuest) {
                                 sliderPosition = it.toLong()
@@ -1393,8 +1411,32 @@ fun BottomSheetPlayer(
                             }
                         },
                         enabled = !isListenTogetherGuest,
-                        colors = PlayerSliderColors.getSliderColors(textButtonColor, playerBackground, useDarkTheme),
-                        modifier = Modifier.padding(horizontal = PlayerHorizontalPadding),
+                        thumb = {
+                            Box(
+                                Modifier
+                                    .size(12.dp)
+                                    .background(Color.White, CircleShape),
+                            )
+                        },
+                        track = { state ->
+                            val range = state.trackRange
+                            val span = range.endInclusive - range.start
+                            val frac = if (span > 0f) ((state.value - range.start) / span).coerceIn(0f, 1f) else 0f
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(2.dp)
+                                    .background(Color.White.copy(alpha = 0.3f)),
+                            ) {
+                                Box(
+                                    Modifier
+                                        .fillMaxWidth(frac)
+                                        .height(2.dp)
+                                        .background(Color.White),
+                                )
+                            }
+                        },
+                        modifier = Modifier.padding(horizontal = SpotifyArtPadding),
                     )
                 }
 
@@ -1497,20 +1539,20 @@ fun BottomSheetPlayer(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = PlayerHorizontalPadding + 4.dp),
+                        .padding(horizontal = SpotifyArtPadding + 4.dp),
             ) {
                 Text(
                     text = makeTimeString(sliderPosition ?: effectivePosition),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = TextBackgroundColor,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = com.metrolist.music.ui.theme.SpotifyGrey,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
 
                 Text(
                     text = if (duration != C.TIME_UNSET) makeTimeString(duration) else "",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = TextBackgroundColor,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = com.metrolist.music.ui.theme.SpotifyGrey,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -1608,7 +1650,7 @@ fun BottomSheetPlayer(
                                         .weight(backButtonWeight),
                             ) {
                                 Icon(
-                                    painter = painterResource(R.drawable.skip_previous),
+                                    painter = painterResource(R.drawable.spotify_prev),
                                     contentDescription = null,
                                     modifier = Modifier.size(32.dp),
                                 )
@@ -1658,7 +1700,7 @@ fun BottomSheetPlayer(
                                                 if (isListenTogetherGuest) {
                                                     if (isMuted) R.drawable.volume_off else R.drawable.volume_up
                                                 } else {
-                                                    if (effectiveIsPlaying) R.drawable.pause else R.drawable.play
+                                                    if (effectiveIsPlaying) R.drawable.spotify_pause else R.drawable.spotify_play
                                                 },
                                             ),
                                         contentDescription =
@@ -1700,7 +1742,7 @@ fun BottomSheetPlayer(
                                         .weight(nextButtonWeight),
                             ) {
                                 Icon(
-                                    painter = painterResource(R.drawable.skip_next),
+                                    painter = painterResource(R.drawable.spotify_next),
                                     contentDescription = null,
                                     modifier = Modifier.size(32.dp),
                                 )
@@ -1715,32 +1757,26 @@ fun BottomSheetPlayer(
                                     .padding(horizontal = PlayerHorizontalPadding),
                         ) {
                             Box(modifier = Modifier.weight(1f)) {
+                                val shuffleOn by playerConnection.shuffleModeEnabled.collectAsStateWithLifecycle()
                                 ResizableIconButton(
-                                    icon =
-                                        when (repeatMode) {
-                                            Player.REPEAT_MODE_OFF, Player.REPEAT_MODE_ALL -> R.drawable.repeat
-                                            Player.REPEAT_MODE_ONE -> R.drawable.repeat_one
-                                            else -> throw IllegalStateException()
-                                        },
-                                    color = TextBackgroundColor,
+                                    icon = R.drawable.spotify_shuffle,
+                                    color = if (shuffleOn) MaterialTheme.colorScheme.primary else TextBackgroundColor,
                                     modifier =
                                         Modifier
                                             .size(32.dp)
                                             .padding(4.dp)
                                             .align(Alignment.Center)
-                                            .alpha(
-                                                if (isListenTogetherGuest || repeatMode == Player.REPEAT_MODE_OFF) 0.5f else 1f,
-                                            ),
+                                            .alpha(if (isListenTogetherGuest) 0.5f else 1f),
                                     enabled = !isListenTogetherGuest,
                                     onClick = {
-                                        playerConnection.player.toggleRepeatMode()
+                                        playerConnection.player.shuffleModeEnabled = !shuffleOn
                                     },
                                 )
                             }
 
                             Box(modifier = Modifier.weight(1f)) {
                                 ResizableIconButton(
-                                    icon = R.drawable.skip_previous,
+                                    icon = R.drawable.spotify_prev,
                                     enabled = canSkipPrevious && !isListenTogetherGuest,
                                     color = TextBackgroundColor,
                                     modifier =
@@ -1758,8 +1794,8 @@ fun BottomSheetPlayer(
                                 modifier =
                                     Modifier
                                         .size(72.dp)
-                                        .clip(RoundedCornerShape(playPauseRoundness))
-                                        .background(textButtonColor)
+                                        .border(2.dp, Color.White, CircleShape)
+                                        .clip(CircleShape)
                                         .clickable {
                                             if (isListenTogetherGuest) {
                                                 playerConnection.toggleMute()
@@ -1790,17 +1826,17 @@ fun BottomSheetPlayer(
                                             ) {
                                                 R.drawable.replay
                                             } else if (effectiveIsPlaying) {
-                                                R.drawable.pause
+                                                R.drawable.spotify_pause
                                             } else {
-                                                R.drawable.play
+                                                R.drawable.spotify_play
                                             },
                                         ),
                                     contentDescription = null,
-                                    colorFilter = ColorFilter.tint(iconButtonColor),
+                                    colorFilter = ColorFilter.tint(Color.White),
                                     modifier =
                                         Modifier
                                             .align(Alignment.Center)
-                                            .size(36.dp),
+                                            .size(40.dp),
                                 )
                             }
 
@@ -1808,7 +1844,7 @@ fun BottomSheetPlayer(
 
                             Box(modifier = Modifier.weight(1f)) {
                                 ResizableIconButton(
-                                    icon = R.drawable.skip_next,
+                                    icon = R.drawable.spotify_next,
                                     enabled = canSkipNext && !isListenTogetherGuest,
                                     color = TextBackgroundColor,
                                     modifier =
@@ -1821,18 +1857,24 @@ fun BottomSheetPlayer(
                             }
 
                             Box(modifier = Modifier.weight(1f)) {
-                                // For episodes, show saved state (inLibrary); for songs, show liked state
-                                val isEpisode = currentSong?.song?.isEpisode == true
-                                val isFavorite = if (isEpisode) currentSong?.song?.inLibrary != null else currentSong?.song?.liked == true
                                 ResizableIconButton(
-                                    icon = if (isFavorite) R.drawable.favorite else R.drawable.favorite_border,
-                                    color = if (isFavorite) MaterialTheme.colorScheme.error else TextBackgroundColor,
+                                    icon =
+                                        when (repeatMode) {
+                                            Player.REPEAT_MODE_OFF, Player.REPEAT_MODE_ALL -> R.drawable.spotify_repeat
+                                            Player.REPEAT_MODE_ONE -> R.drawable.spotify_repeat_one
+                                            else -> throw IllegalStateException()
+                                        },
+                                    color = if (repeatMode == Player.REPEAT_MODE_OFF) TextBackgroundColor else MaterialTheme.colorScheme.primary,
                                     modifier =
                                         Modifier
                                             .size(32.dp)
                                             .padding(4.dp)
-                                            .align(Alignment.Center),
-                                    onClick = playerConnection::toggleLike,
+                                            .align(Alignment.Center)
+                                            .alpha(if (isListenTogetherGuest) 0.5f else 1f),
+                                    enabled = !isListenTogetherGuest,
+                                    onClick = {
+                                        playerConnection.player.toggleRepeatMode()
+                                    },
                                 )
                             }
                         }
@@ -2154,8 +2196,7 @@ private fun PlayerMoreMenuButton(
         modifier =
             Modifier
                 .size(40.dp)
-                .clip(RoundedCornerShape(24.dp))
-                .background(textButtonColor)
+                .clip(CircleShape)
                 .clickable {
                     menuState.show {
                         PlayerMenu(
@@ -2174,9 +2215,9 @@ private fun PlayerMoreMenuButton(
                 },
     ) {
         Image(
-            painter = painterResource(R.drawable.more_horiz),
+            painter = painterResource(R.drawable.spotify_more),
             contentDescription = null,
-            colorFilter = ColorFilter.tint(iconButtonColor),
+            colorFilter = ColorFilter.tint(Color.White),
         )
     }
 }

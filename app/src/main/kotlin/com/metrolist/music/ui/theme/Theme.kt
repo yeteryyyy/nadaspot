@@ -6,65 +6,90 @@
 package com.metrolist.music.ui.theme
 
 import android.graphics.Bitmap
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
+import androidx.compose.material3.Typography
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.SaverScope
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.palette.graphics.Palette
-import com.materialkolor.PaletteStyle
-import com.materialkolor.dynamiccolor.ColorSpec
-import com.materialkolor.rememberDynamicColorScheme
 import com.materialkolor.score.Score
 
-val DefaultThemeColor = Color(0xFFED5564)
+val DefaultThemeColor = Color(0xFF1DB954)
 
+// Spotify mobile, 2018 palette
+val SpotifyGreen = Color(0xFF1DB954)
+val SpotifyBlack = Color(0xFF121212)
+val SpotifyNavBar = Color(0xFF181818)
+val SpotifyMiniPlayer = Color(0xFF282828)
+val SpotifyGrey = Color(0xFFB3B3B3)
+val SpotifyDivider = Color(0xFF282828)
+
+private val SpotifyColorScheme = darkColorScheme(
+    primary = SpotifyGreen,
+    onPrimary = Color.Black,
+    primaryContainer = SpotifyGreen,
+    onPrimaryContainer = Color.Black,
+    secondary = SpotifyGreen,
+    onSecondary = Color.Black,
+    secondaryContainer = SpotifyMiniPlayer,
+    onSecondaryContainer = Color.White,
+    tertiary = SpotifyGreen,
+    onTertiary = Color.Black,
+    background = SpotifyBlack,
+    onBackground = Color.White,
+    surface = SpotifyBlack,
+    onSurface = Color.White,
+    surfaceVariant = SpotifyMiniPlayer,
+    onSurfaceVariant = SpotifyGrey,
+    surfaceTint = Color.Transparent,
+    surfaceBright = Color(0xFF333333),
+    surfaceDim = SpotifyBlack,
+    surfaceContainerLowest = Color.Black,
+    surfaceContainerLow = SpotifyBlack,
+    surfaceContainer = SpotifyNavBar,
+    surfaceContainerHigh = SpotifyMiniPlayer,
+    surfaceContainerHighest = Color(0xFF333333),
+    outline = SpotifyGrey,
+    outlineVariant = SpotifyDivider,
+    error = Color(0xFFE22134),
+    onError = Color.White,
+)
+
+/**
+ * Always dark, always Spotify green. [darkTheme] and [themeColor] are kept for
+ * call-site compatibility; the album-art colour is applied by the player
+ * gradient, not by the global scheme.
+ */
 @Composable
 fun MetrolistTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = true,
     pureBlack: Boolean = false,
     themeColor: Color = DefaultThemeColor,
     content: @Composable () -> Unit,
 ) {
-    val context = LocalContext.current
-    // Determine if system dynamic colors should be used (Android S+ and default theme color)
-    val useSystemDynamicColor = (themeColor == DefaultThemeColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
-
-    // Select the appropriate color scheme generation method
-    val baseColorScheme = if (useSystemDynamicColor) {
-        // Use standard Material 3 dynamic color functions for system wallpaper colors
-        if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-    } else {
-        // Use materialKolor only when a specific seed color is provided
-        rememberDynamicColorScheme(
-            seedColor = themeColor, // themeColor is guaranteed non-default here
-            isDark = darkTheme,
-            specVersion = ColorSpec.SpecVersion.SPEC_2025,
-            style = PaletteStyle.TonalSpot // Keep existing style
-        )
+    val colorScheme = remember(pureBlack) {
+        if (pureBlack) SpotifyColorScheme.pureBlack(true) else SpotifyColorScheme
     }
 
-    // Apply pureBlack modification if needed, similar to original logic
-    val colorScheme = remember(baseColorScheme, pureBlack, darkTheme) {
-        if (darkTheme && pureBlack) {
-            baseColorScheme.pureBlack(true)
-        } else {
-            baseColorScheme
-        }
-    }
-
-    // Use standard MaterialTheme instead of MaterialExpressiveTheme
     MaterialTheme(
         colorScheme = colorScheme,
+        typography = SpotifyTypography,
         content = content,
+    )
+}
+
+private val SpotifyTypography = Typography().let { t ->
+    t.copy(
+        titleLarge = t.titleLarge.copy(fontWeight = FontWeight.Bold),
+        titleMedium = t.titleMedium.copy(fontWeight = FontWeight.Bold),
+        labelLarge = t.labelLarge.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
     )
 }
 

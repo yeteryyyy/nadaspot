@@ -40,8 +40,8 @@ sealed class Screens(
 
     object Library : Screens(
         titleId = R.string.filter_library,
-        iconIdInactive = R.drawable.library_music_outlined,
-        iconIdActive = R.drawable.library_music_filled,
+        iconIdInactive = R.drawable.library_spotify,
+        iconIdActive = R.drawable.library_spotify,
         route = "library"
     )
 

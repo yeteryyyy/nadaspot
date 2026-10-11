@@ -78,6 +78,7 @@ import com.metrolist.music.constants.HidePlayerThumbnailKey
 import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.PlayerHorizontalPadding
+import com.metrolist.music.constants.SpotifyArtPadding
 import com.metrolist.music.constants.SeekExtraSeconds
 import com.metrolist.music.constants.SwipeThumbnailKey
 import com.metrolist.music.constants.ThumbnailCornerRadius
@@ -117,7 +118,7 @@ data class MediaItemsData(
 private fun calculateThumbnailDimensions(
     containerWidth: Dp,
     containerHeight: Dp = containerWidth,
-    horizontalPadding: Dp = PlayerHorizontalPadding,
+    horizontalPadding: Dp = SpotifyArtPadding,
     cornerRadius: Dp = ThumbnailCornerRadius,
     isLandscape: Boolean = false
 ): ThumbnailDimensions {
@@ -379,7 +380,7 @@ fun Thumbnail(
                         flingBehavior = rememberSnapFlingBehavior(thumbnailSnapLayoutInfoProvider),
                         userScrollEnabled = isScrollEnabled,
                         modifier = if (isLandscape) {
-                            Modifier.size(dimensions.thumbnailSize + (PlayerHorizontalPadding * 2))
+                            Modifier.size(dimensions.thumbnailSize + (SpotifyArtPadding * 2))
                         } else {
                             Modifier.fillMaxSize()
                         }
@@ -454,27 +455,26 @@ private fun ThumbnailHeader(
                 .align(Alignment.Center)
                 .padding(horizontal = 48.dp)
         ) {
-            // Listen Together indicator
-            if (listenTogetherRoleState?.value != RoomRole.NONE) {
-                Text(
-                    text = if (listenTogetherRoleState?.value == RoomRole.HOST) "Hosting Listen Together" else "Listening Together",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = textColor
-                )
-            } else {
-                Text(
-                    text = stringResource(R.string.now_playing),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = textColor
-                )
-            }
             val playingFrom = queueTitle ?: albumTitle
+            Text(
+                text = if (listenTogetherRoleState?.value != RoomRole.NONE) {
+                    if (listenTogetherRoleState?.value == RoomRole.HOST) "HOSTING LISTEN TOGETHER" else "LISTENING TOGETHER"
+                } else {
+                    "PLAYING FROM PLAYLIST"
+                },
+                fontSize = 11.sp,
+                letterSpacing = 1.5.sp,
+                fontWeight = FontWeight.Normal,
+                color = textColor.copy(alpha = 0.7f),
+                maxLines = 1,
+            )
             if (!playingFrom.isNullOrBlank()) {
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = playingFrom,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = textColor.copy(alpha = 0.8f),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = textColor,
                     maxLines = 1,
                     modifier = Modifier.basicMarquee()
                 )
@@ -511,14 +511,14 @@ private fun ThumbnailItem(
         modifier = modifier
             .then(
                 if (isLandscape) {
-                    Modifier.size(dimensions.thumbnailSize + (PlayerHorizontalPadding * 2))
+                    Modifier.size(dimensions.thumbnailSize + (SpotifyArtPadding * 2))
                 } else {
                     Modifier
                         .width(dimensions.itemWidth)
                         .fillMaxSize()
                 }
             )
-            .padding(horizontal = PlayerHorizontalPadding)
+            .padding(horizontal = SpotifyArtPadding)
             .graphicsLayer {
                 // Render entire thumbnail item on separate hardware layer for smooth animations
                 compositingStrategy = CompositingStrategy.Offscreen

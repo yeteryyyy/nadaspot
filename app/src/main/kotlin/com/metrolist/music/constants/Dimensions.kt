@@ -17,12 +17,12 @@ const val CONTENT_TYPE_ARTIST = 3
 const val CONTENT_TYPE_ALBUM = 4
 const val CONTENT_TYPE_PLAYLIST = 5
 
-val NavigationBarHeight = 80.dp
-val SlimNavBarHeight = 64.dp
-val MiniPlayerHeight = 64.dp
+val NavigationBarHeight = 56.dp
+val SlimNavBarHeight = 48.dp
+val MiniPlayerHeight = 48.dp
 val MinMiniPlayerHeight = 16.dp
-val MiniPlayerBottomSpacing = 8.dp // Space between MiniPlayer and NavigationBar
-val QueuePeekHeight = 64.dp
+val MiniPlayerBottomSpacing = 0.dp // Space between MiniPlayer and NavigationBar
+val QueuePeekHeight = 48.dp
 val AppBarHeight = 64.dp
 
 val ListItemHeight = 64.dp
@@ -33,9 +33,10 @@ val SmallGridThumbnailHeight = 104.dp
 val GridThumbnailHeight = 128.dp
 val AlbumThumbnailSize = 144.dp
 
-val ThumbnailCornerRadius = 3.dp
+val ThumbnailCornerRadius = 0.dp
 
 val PlayerHorizontalPadding = 32.dp
+val SpotifyArtPadding = 56.dp // 2018 now-playing art/slider inset
 
 val NavigationBarAnimationSpec = spring<Dp>(
     dampingRatio = Spring.DampingRatioNoBouncy,

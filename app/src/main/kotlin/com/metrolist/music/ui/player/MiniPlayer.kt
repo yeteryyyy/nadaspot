@@ -146,25 +146,141 @@ fun MiniPlayer(
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
 ) {
-    val useNewMiniPlayerDesign by rememberPreference(UseNewMiniPlayerDesignKey, true)
-
     // Create stable progress state - doesn't cause recomposition on position changes
     val progressState = remember { ProgressState(positionState, durationState) }
 
-    if (useNewMiniPlayerDesign) {
-        NewMiniPlayer(
-            progressState = progressState,
-            modifier = modifier,
-            onClick = onClick,
-        )
-    } else {
-        Box(modifier = modifier.fillMaxWidth()) {
-            LegacyMiniPlayer(
-                progressState = progressState,
-                modifier = Modifier.align(Alignment.Center),
-                onClick = onClick,
-            )
+    SpotifyMiniPlayer(
+        progressState = progressState,
+        modifier = modifier,
+        onClick = onClick,
+    )
+}
+
+// ============================================================================
+// SPOTIFY 2018 MINI PLAYER
+// ============================================================================
+
+@Composable
+private fun SpotifyMiniPlayer(
+    progressState: ProgressState,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {},
+) {
+    val playerConnection = LocalPlayerConnection.current ?: return
+    val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
+    val playbackState by playerConnection.playbackState.collectAsState()
+    val isPlaying by playerConnection.isPlaying.collectAsState()
+    val metadata = mediaMetadata ?: return
+
+    val artistText =
+        remember(metadata.artists) {
+            metadata.artists
+                .filter { it.name.isNotBlank() }
+                .joinToString(", ") { it.name }
         }
+
+    Box(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .height(MiniPlayerHeight)
+                .background(com.metrolist.music.ui.theme.SpotifyMiniPlayer)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onClick,
+                ),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.spotify_chevron_up),
+                contentDescription = null,
+                tint = com.metrolist.music.ui.theme.SpotifyGrey,
+                modifier =
+                    Modifier
+                        .padding(horizontal = 12.dp)
+                        .size(24.dp),
+            )
+
+            // "Title • Artist" centred, like the 2018 app
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(
+                    text = metadata.title,
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                if (artistText.isNotEmpty()) {
+                    Text(
+                        text = " \u2022 $artistText",
+                        color = com.metrolist.music.ui.theme.SpotifyGrey,
+                        fontSize = 14.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                }
+            }
+
+            // Outlined circular play/pause
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier =
+                    Modifier
+                        .padding(horizontal = 12.dp)
+                        .size(32.dp)
+                        .border(1.5.dp, Color.White, CircleShape)
+                        .clip(CircleShape)
+                        .clickable {
+                            if (playbackState == Player.STATE_ENDED) {
+                                playerConnection.player.seekTo(0, 0)
+                                playerConnection.player.playWhenReady = true
+                            } else {
+                                playerConnection.togglePlayPause()
+                            }
+                        },
+            ) {
+                Icon(
+                    painter = painterResource(if (isPlaying) R.drawable.spotify_pause else R.drawable.spotify_play),
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
+
+        // Hairline progress along the bottom edge
+        Box(
+            modifier =
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .height(2.dp)
+                    .background(Color.White.copy(alpha = 0.15f)),
+        )
+        Box(
+            modifier =
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .height(2.dp)
+                    .drawWithContent {
+                        drawRect(
+                            color = Color.White,
+                            size = Size(size.width * progressState.progress, size.height),
+                        )
+                    },
+        )
     }
 }
 
@@ -607,7 +723,7 @@ private fun NewMiniPlayerPlayButton(
                             } else if (playbackState == Player.STATE_ENDED) {
                                 R.drawable.replay
                             } else {
-                                R.drawable.play
+                                R.drawable.spotify_play
                             },
                         ),
                     contentDescription = null,
@@ -861,7 +977,7 @@ private fun LegacyMiniPlayer(
                 enabled = canSkipNext && !isListenTogetherGuest,
                 onClick = if (isListenTogetherGuest) ({}) else ({ playerConnection.seekToNext() }),
             ) {
-                Icon(painter = painterResource(R.drawable.skip_next), contentDescription = null)
+                Icon(painter = painterResource(R.drawable.spotify_next), contentDescription = null)
             }
         }
 
@@ -876,7 +992,7 @@ private fun LegacyMiniPlayer(
                 Icon(
                     painter =
                         painterResource(
-                            if (offsetXAnimatable.value > 0) R.drawable.skip_previous else R.drawable.skip_next,
+                            if (offsetXAnimatable.value > 0) R.drawable.spotify_prev else R.drawable.spotify_next,
                         ),
                     contentDescription = null,
                     tint =
@@ -926,8 +1042,8 @@ private fun LegacyPlayPauseButton(
                     when {
                         isListenTogetherGuest -> if (isMuted) R.drawable.volume_off else R.drawable.volume_up
                         playbackState == Player.STATE_ENDED -> R.drawable.replay
-                        effectiveIsPlaying -> R.drawable.pause
-                        else -> R.drawable.play
+                        effectiveIsPlaying -> R.drawable.spotify_pause
+                        else -> R.drawable.spotify_play
                     },
                 ),
             contentDescription = null,

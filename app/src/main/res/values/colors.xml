@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Spotify Green -->
+    <color name="spotify_green">#1DB954</color>
+    <color name="spotify_green_dark">#1ED760</color>
+    <color name="spotify_black">#000000</color>
+    <color name="spotify_dark_grey">#121212</color>
+    <color name="spotify_medium_grey">#282828</color>
+    <color name="spotify_light_grey">#b3b3b3</color>
+    <color name="spotify_white">#ffffff</color>
+
     <color name="ic_launcher_static_background">#000000</color>
 
     <!-- Widget colors for light mode -->

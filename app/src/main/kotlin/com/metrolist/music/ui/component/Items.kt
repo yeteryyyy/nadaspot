@@ -261,16 +261,16 @@ inline fun ListItem(
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = if (isActive) {
-            modifier // playing highlight
+        modifier = if (isActive && isSelected == true) {
+            modifier // selected active
                 .height(ListItemHeight)
                 .padding(horizontal = 8.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(
-                    color = // selected active
-                        if (isSelected == true) MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
-                        else MaterialTheme.colorScheme.secondaryContainer
-                )
+                .background(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
+        } else if (isActive) {
+            // Spotify 2018: no highlight row, the playing title just turns green
+            modifier
+                .height(ListItemHeight)
+                .padding(horizontal = 8.dp)
         } else if (isSelected == true) {
             modifier // inactive selected
                 .height(ListItemHeight)
@@ -317,8 +317,9 @@ inline fun ListItem(
         ) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Normal,
+                color = if (isActive) MaterialTheme.colorScheme.primary else Color.White,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )

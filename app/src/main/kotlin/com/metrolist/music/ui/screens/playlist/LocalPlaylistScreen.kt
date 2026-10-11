@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.screens.playlist
 
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.unit.sp
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
@@ -1320,7 +1322,7 @@ fun LocalPlaylistHeader(
             horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Shuffle Button - Smaller secondary button
+            // Spotify 2018: one big green SHUFFLE PLAY pill
             Surface(
                 onClick = {
                     playerConnection.playQueue(
@@ -1330,45 +1332,24 @@ fun LocalPlaylistHeader(
                         ),
                     )
                 },
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.size(48.dp),
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.shuffle),
-                        contentDescription = stringResource(R.string.shuffle),
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
-            }
-
-            // Play Button - Larger primary circular button
-            Surface(
-                onClick = {
-                    playerConnection.playQueue(
-                        ListQueue(
-                            title = playlist.playlist.name,
-                            items = songs.map { it.song.toMediaItem() },
-                        ),
-                    )
-                },
+                shape = RoundedCornerShape(percent = 50),
                 color = MaterialTheme.colorScheme.primary,
-                shape = CircleShape,
-                modifier = Modifier.size(72.dp),
+                modifier =
+                    Modifier
+                        .height(48.dp)
+                        .widthIn(min = 220.dp),
             ) {
                 Box(
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp),
                     contentAlignment = Alignment.Center,
-                    modifier = Modifier.fillMaxSize(),
                 ) {
-                    Icon(
-                        painter = painterResource(R.drawable.play),
-                        contentDescription = stringResource(R.string.play),
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(32.dp),
+                    Text(
+                        text = stringResource(R.string.shuffle_play),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 2.sp,
+                        maxLines = 1,
                     )
                 }
             }

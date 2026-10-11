@@ -129,11 +129,11 @@ android {
         }
         debug {
             if (applicationIdOverride == null) {
-                applicationIdSuffix = ".debug"
+                applicationIdSuffix = ".spot"
             }
             isDebuggable = true
             if (appNameOverride == null) {
-                resValue("string", "app_name", "Metrolist Debug")
+                resValue("string", "app_name", "Nadaspot")
             }
             signingConfig =
                 if (workflowDebugKeystoreFile != null) {
