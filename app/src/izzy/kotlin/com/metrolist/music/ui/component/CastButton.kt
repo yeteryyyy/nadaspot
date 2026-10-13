@@ -16,3 +16,12 @@ fun CastButton(
 ) {
     // No-op: Cast not available in Izzy build
 }
+
+/** Stub "Devices Available" row: Cast is not available without GMS. */
+@Composable
+fun CastDevicesRow(
+    modifier: Modifier = Modifier,
+    tintColor: Color = Color(0xFFB3B3B3),
+) {
+    // No-op
+}

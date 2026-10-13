@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="audio_output_title" translatable="false">Connect to a device</string>
+    <string name="audio_output_this_phone" translatable="false">This phone</string>
+    <string name="audio_output_bluetooth" translatable="false">Bluetooth</string>
+    <string name="audio_output_cast" translatable="false">Google Cast</string>
+</resources>

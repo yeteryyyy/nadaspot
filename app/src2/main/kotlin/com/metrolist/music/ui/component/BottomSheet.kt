@@ -108,7 +108,7 @@ fun BottomSheet(
                 )
             }
             .graphicsLayer {
-                val cornerRadius = if (!state.isExpanded) 16.dp.toPx() else 0f
+                val cornerRadius = 0f // Spotify 2018: square sheet edges
                 shape = RoundedCornerShape(topStart = cornerRadius, topEnd = cornerRadius)
                 clip = true
             }

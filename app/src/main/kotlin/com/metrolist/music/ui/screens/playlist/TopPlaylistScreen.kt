@@ -5,6 +5,11 @@
 
 package com.metrolist.music.ui.screens.playlist
 
+import com.metrolist.music.ui.component.ShufflePlayBlockHeight
+import com.metrolist.music.ui.component.ShufflePlayOverlay
+import com.metrolist.music.ui.component.SpotifyHeaderGradient
+import com.metrolist.music.ui.component.SpotifyTopAppBar
+import com.metrolist.music.ui.component.ShufflePlayButton
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -245,6 +250,8 @@ fun TopPlaylistScreen(
     Box(
         modifier = Modifier.fillMaxSize(),
     ) {
+        SpotifyHeaderGradient(state)
+
         LazyColumn(
             state = state,
             contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
@@ -406,7 +413,18 @@ fun TopPlaylistScreen(
             headerItems = 2
         )
 
-        TopAppBar(
+        ShufflePlayOverlay(listState = state, visible = !isSearching) {
+                            playerConnection.playQueue(
+                                ListQueue(
+                                    title = name,
+                                    items = songs!!.shuffled().map { it.toMediaItem() },
+                                ),
+                            )
+                        }
+
+        SpotifyTopAppBar(
+            scrolled = state.firstVisibleItemIndex > 0,
+            forceOpaque = isSearching || inSelectMode,
             title = {
                 when {
                     inSelectMode -> {
@@ -441,7 +459,9 @@ fun TopPlaylistScreen(
                         )
                     }
                     else -> {
-                        Text(text = name)
+                        if (state.firstVisibleItemIndex > 0) {
+                            Text(text = name)
+                        }
                     }
                 }
             },
@@ -513,6 +533,39 @@ fun TopPlaylistScreen(
                         Icon(
                             painter = painterResource(R.drawable.search),
                             contentDescription = null
+                        )
+                    }
+                    IconButton(
+                        onClick = {
+                            val allSongs = songs ?: return@IconButton
+                            menuState.show {
+                                TopPlaylistMenu(
+                                    downloadState = downloadState,
+                                    onQueue = { playerConnection.addToQueue(allSongs.map { it.toMediaItem() }) },
+                                    onDownload = {
+                                        when (downloadState) {
+                                        Download.STATE_COMPLETED -> { showRemoveDownloadDialog = true }
+                                        Download.STATE_DOWNLOADING -> {
+                                            allSongs.forEach { song ->
+                                                DownloadService.sendRemoveDownload(
+                                                    context,
+                                                    ExoDownloadService::class.java,
+                                                    song.id,
+                                                    false,
+                                                )
+                                            }
+                                        }
+                                        else -> allSongs.forEach { downloadUtil.download(it) }
+                                    }
+                                    },
+                                    onDismiss = { menuState.dismiss() },
+                                )
+                            }
+                        },
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.more_vert),
+                            contentDescription = null,
                         )
                     }
                 }
@@ -593,114 +646,7 @@ private fun TopPlaylistHeader(
         Spacer(modifier = Modifier.height(24.dp))
 
         // Action Buttons Row
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Shuffle Button - Smaller secondary button
-            androidx.compose.material3.Surface(
-                onClick = {
-                    playerConnection.playQueue(
-                        ListQueue(
-                            title = name,
-                            items = songs.shuffled().map { it.toMediaItem() },
-                        ),
-                    )
-                },
-                shape = androidx.compose.foundation.shape.CircleShape,
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.size(48.dp)
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.shuffle),
-                        contentDescription = stringResource(R.string.shuffle),
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
 
-            // Play Button - Larger primary circular button
-            Surface(
-                onClick = {
-                    playerConnection.playQueue(
-                        ListQueue(
-                            title = name,
-                            items = songs.map { it.toMediaItem() },
-                        ),
-                    )
-                },
-                color = MaterialTheme.colorScheme.primary,
-                shape = androidx.compose.foundation.shape.CircleShape,
-                modifier = Modifier.size(72.dp)
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.play),
-                        contentDescription = stringResource(R.string.play),
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
-            }
-
-            // Menu Button - Smaller secondary button
-            androidx.compose.material3.Surface(
-                onClick = {
-                    menuState.show {
-                        TopPlaylistMenu(
-                            downloadState = downloadState,
-                            onQueue = {
-                                playerConnection.addToQueue(
-                                    songs.map { it.toMediaItem() }
-                                )
-                            },
-                            onDownload = {
-                                when (downloadState) {
-                                    Download.STATE_COMPLETED -> onShowRemoveDownloadDialog()
-                                    Download.STATE_DOWNLOADING -> {
-                                        songs.forEach { song ->
-                                            DownloadService.sendRemoveDownload(
-                                                context,
-                                                ExoDownloadService::class.java,
-                                                song.id,
-                                                false,
-                                            )
-                                        }
-                                    }
-                                    else -> {
-                                        songs.forEach { downloadUtil.download(it) }
-                                    }
-                                }
-                            },
-                            onDismiss = { menuState.dismiss() }
-                        )
-                    }
-                },
-                shape = androidx.compose.foundation.shape.CircleShape,
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.size(48.dp)
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.more_vert),
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-        }
+        Spacer(modifier = Modifier.height(ShufflePlayBlockHeight))
     }
 }

@@ -5,6 +5,11 @@
 
 package com.metrolist.music.ui.screens.playlist
 
+import com.metrolist.music.ui.component.ShufflePlayBlockHeight
+import com.metrolist.music.ui.component.ShufflePlayOverlay
+import com.metrolist.music.ui.component.SpotifyHeaderGradient
+import com.metrolist.music.ui.component.SpotifyTopAppBar
+import com.metrolist.music.ui.component.ShufflePlayButton
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -105,6 +110,7 @@ fun CachePlaylistScreen(
     viewModel: CachePlaylistViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
+    val downloadUtil = LocalDownloadUtil.current
     val menuState = LocalMenuState.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val haptic = LocalHapticFeedback.current
@@ -190,6 +196,8 @@ fun CachePlaylistScreen(
     Box(
         modifier = Modifier.fillMaxSize(),
     ) {
+        SpotifyHeaderGradient(lazyListState)
+
         LazyColumn(
             state = lazyListState,
             contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
@@ -351,7 +359,18 @@ fun CachePlaylistScreen(
             headerItems = 2
         )
 
-        TopAppBar(
+        ShufflePlayOverlay(listState = lazyListState, visible = !isSearching) {
+                            playerConnection.playQueue(
+                                ListQueue(
+                                    title = "Cache Songs",
+                                    items = filteredSongs.shuffled().map { it.toMediaItem() },
+                                ),
+                            )
+                        }
+
+        SpotifyTopAppBar(
+            scrolled = lazyListState.firstVisibleItemIndex > 0,
+            forceOpaque = isSearching || inSelectMode,
             title = {
                 when {
                     inSelectMode -> {
@@ -386,10 +405,9 @@ fun CachePlaylistScreen(
                         )
                     }
                     else -> {
-                        Text(
-                            stringResource(R.string.cached_playlist),
-                            style = MaterialTheme.typography.titleLarge
-                        )
+                        if (lazyListState.firstVisibleItemIndex > 0) {
+                            Text(stringResource(R.string.cached_playlist))
+                        }
                     }
                 }
             },
@@ -462,6 +480,23 @@ fun CachePlaylistScreen(
                             contentDescription = null
                         )
                     }
+                    IconButton(
+                        onClick = {
+                            menuState.show {
+                                CachePlaylistMenu(
+                                    downloadState = Download.STATE_STOPPED,
+                                    onQueue = { playerConnection.addToQueue(filteredSongs.map { it.toMediaItem() }) },
+                                    onDownload = { filteredSongs.forEach { downloadUtil.download(it) } },
+                                    onDismiss = { menuState.dismiss() },
+                                )
+                            }
+                        },
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.more_vert),
+                            contentDescription = null,
+                        )
+                    }
                 }
             }
         )
@@ -530,100 +565,7 @@ private fun CachePlaylistHeader(
         Spacer(modifier = Modifier.height(24.dp))
 
         // Action Buttons Row
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Shuffle Button - Smaller secondary button
-            androidx.compose.material3.Surface(
-                onClick = {
-                    playerConnection.playQueue(
-                        ListQueue(
-                            title = "Cache Songs",
-                            items = songs.shuffled().map { it.toMediaItem() },
-                        )
-                    )
-                },
-                shape = androidx.compose.foundation.shape.CircleShape,
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.size(48.dp)
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.shuffle),
-                        contentDescription = stringResource(R.string.shuffle),
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
 
-            // Play Button - Larger primary circular button
-            Surface(
-                onClick = {
-                    playerConnection.playQueue(
-                        ListQueue(
-                            title = "Cache Songs",
-                            items = songs.map { it.toMediaItem() },
-                        )
-                    )
-                },
-                color = MaterialTheme.colorScheme.primary,
-                shape = androidx.compose.foundation.shape.CircleShape,
-                modifier = Modifier.size(72.dp)
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.play),
-                        contentDescription = stringResource(R.string.play),
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
-            }
-
-            // Menu Button - Smaller secondary button
-            Surface(
-                onClick = {
-                    menuState.show {
-                        CachePlaylistMenu(
-                            downloadState = Download.STATE_STOPPED,
-                            onQueue = {
-                                playerConnection.addToQueue(
-                                    songs.map { it.toMediaItem() }
-                                )
-                            },
-                            onDownload = {
-                                // Download all cached songs
-                                songs.forEach { downloadUtil.download(it) }
-                            },
-                            onDismiss = { menuState.dismiss() }
-                        )
-                    }
-                },
-                shape = androidx.compose.foundation.shape.CircleShape,
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.size(48.dp)
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.more_vert),
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-        }
+        Spacer(modifier = Modifier.height(ShufflePlayBlockHeight))
     }
 }

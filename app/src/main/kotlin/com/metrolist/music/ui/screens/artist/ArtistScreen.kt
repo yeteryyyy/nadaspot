@@ -11,6 +11,8 @@ import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,6 +39,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -107,7 +113,12 @@ import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.LinkSegment
 import com.metrolist.music.ui.component.LocalMenuState
-import com.metrolist.music.ui.component.NavigationTitle
+import com.metrolist.music.ui.component.ShufflePlayBlockHeight
+import com.metrolist.music.ui.component.ShufflePlayOverlay
+import com.metrolist.music.ui.component.SpotifyHeaderGradient
+import com.metrolist.music.ui.component.SpotifyTopAppBar
+import com.metrolist.music.ui.component.spotifyPressable
+import com.metrolist.music.ui.theme.SpotifyFontFamily
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.component.YouTubeGridItem
 import com.metrolist.music.ui.component.YouTubeListItem
@@ -177,11 +188,23 @@ fun ArtistScreen(
             -(systemBarsTopPadding + AppBarHeight).roundToPx()
         }
 
-    val transparentAppBar by remember {
+    val thumbnail = artistPage?.artist?.thumbnail ?: libraryArtist?.artist?.thumbnailUrl
+    val heroHeight = if (thumbnail != null) 360.dp else 180.dp
+    val heroThresholdPx = with(density) { (heroHeight - 72.dp).toPx() }
+    // Top bar turns opaque (and shows the artist name) once the hero has scrolled away.
+    val scrolledPastHero by remember {
         derivedStateOf {
-            lazyListState.firstVisibleItemIndex == 0 && lazyListState.firstVisibleItemScrollOffset < 100
+            lazyListState.firstVisibleItemIndex > 0 ||
+                lazyListState.firstVisibleItemScrollOffset > heroThresholdPx
         }
     }
+    var songsExpanded by rememberSaveable { mutableStateOf(false) }
+    val popularCount = 5
+    val firstSongSectionIndex =
+        artistPage?.sections?.indexOfFirst { (it.items.firstOrNull() as? SongItem)?.album != null } ?: -1
+    val canShuffle =
+        !isGuest &&
+            if (showLocal) librarySongs.isNotEmpty() else artistPage?.artist?.shuffleEndpoint != null
 
     val distinctItemsBySection = remember(artistPage?.sections) {
         artistPage?.sections?.map { section ->
@@ -197,6 +220,10 @@ fun ArtistScreen(
     Box(
         modifier = Modifier.fillMaxSize(),
     ) {
+        if (thumbnail == null && (artistPage != null || showLocal)) {
+            SpotifyHeaderGradient(lazyListState)
+        }
+
         LazyColumn(
             state = lazyListState,
             contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
@@ -295,221 +322,163 @@ fun ArtistScreen(
                 }
             } else {
                 item(key = "header") {
-                    val thumbnail = artistPage?.artist?.thumbnail ?: libraryArtist?.artist?.thumbnailUrl
+                    val topPad = systemBarsTopPadding + AppBarHeight
+                    val topInsetPx = with(density) { topPad.roundToPx() }
+                    val monthlyListeners = artistPage?.monthlyListenerCount
+                    val subscriberCount = artistPage?.subscriberCountText
+                    val listenersText =
+                        when {
+                            showLocal -> null
+                            showMonthlyListeners && !monthlyListeners.isNullOrEmpty() -> monthlyListeners
+                            showArtistSubscriberCount && !subscriberCount.isNullOrEmpty() -> subscriberCount
+                            else -> null
+                        }
 
-                    Box {
-                        // Artist Image with offset
-                        if (thumbnail != null) {
-                            Box(
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .aspectRatio(1f)
-                                        .offset {
-                                            IntOffset(x = 0, y = headerOffset)
-                                        },
-                            ) {
-                                AsyncImage(
-                                    model = thumbnail.resize(1200, 1200),
-                                    contentDescription = null,
-                                    contentScale = ContentScale.Crop,
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            if (thumbnail != null) {
+                                // Full-bleed hero: extends up under the (transparent) top bar. The layout
+                                // hides that extra height from the list so the SHUFFLE PLAY overlay lines up.
+                                Box(
                                     modifier =
                                         Modifier
                                             .fillMaxWidth()
-                                            .align(Alignment.TopCenter)
-                                            .fadingEdge(
-                                                bottom = 200.dp,
-                                            ),
+                                            .height(heroHeight + topPad)
+                                            .layout { measurable, constraints ->
+                                                val placeable = measurable.measure(constraints)
+                                                layout(placeable.width, placeable.height - topInsetPx) {
+                                                    placeable.place(0, -topInsetPx)
+                                                }
+                                            },
+                                ) {
+                                    AsyncImage(
+                                        model = thumbnail.resize(1200, 1200),
+                                        contentDescription = null,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize(),
+                                    )
+                                    Box(
+                                        modifier =
+                                            Modifier
+                                                .fillMaxSize()
+                                                .background(
+                                                    Brush.verticalGradient(
+                                                        0f to Color.Black.copy(alpha = 0.45f),
+                                                        0.28f to Color.Transparent,
+                                                        0.5f to Color.Transparent,
+                                                        1f to MaterialTheme.colorScheme.surface,
+                                                    ),
+                                                ),
+                                    )
+                                }
+                            } else {
+                                Spacer(modifier = Modifier.fillMaxWidth().height(heroHeight))
+                            }
+
+                            // Artist name + listeners, centred at the bottom of the hero
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier =
+                                    Modifier
+                                        .align(Alignment.BottomCenter)
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 24.dp)
+                                        .padding(bottom = 16.dp),
+                            ) {
+                                Text(
+                                    text = displayArtistName ?: "Unknown",
+                                    fontFamily = SpotifyFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 40.sp,
+                                    lineHeight = 44.sp,
+                                    textAlign = TextAlign.Center,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
                                 )
+                                if (listenersText != null) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = listenersText.uppercase(),
+                                        fontFamily = SpotifyFontFamily,
+                                        fontWeight = FontWeight.Medium,
+                                        fontSize = 11.sp,
+                                        letterSpacing = 1.5.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        textAlign = TextAlign.Center,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
                             }
                         }
 
-                        // Artist Name and Controls Section - positioned at bottom of image
-                        Column(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(
-                                        top =
-                                            if (thumbnail != null) {
-                                                // Position content at the bottom part of the image
-                                                // Using screen width to calculate aspect ratio height minus overlap
-                                                LocalResources.current.displayMetrics.widthPixels.let { screenWidth ->
-                                                    with(density) {
-                                                        ((screenWidth / 1.2f) - 144).toDp()
-                                                    }
-                                                }
-                                            } else {
-                                                16.dp
-                                            },
-                                    ),
-                        ) {
-                            Column(
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp),
-                            ) {
-                                // Artist Name
-                                Text(
-                                    text = displayArtistName ?: "Unknown",
-                                    style = MaterialTheme.typography.headlineLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    fontSize = 32.sp,
-                                    modifier = Modifier.padding(bottom = 16.dp),
-                                )
+                        // Room for the SHUFFLE PLAY pill that ShufflePlayOverlay draws here
+                        Spacer(modifier = Modifier.height(if (canShuffle) ShufflePlayBlockHeight else 8.dp))
+                    }
+                }
 
-                                // Buttons Row
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    // Subscribe Button
-                                    OutlinedButton(
-                                        onClick = {
-                                            viewModel.toggleChannelSubscription()
-                                        },
-                                        colors =
-                                            ButtonDefaults.outlinedButtonColors(
-                                                containerColor =
-                                                    if (isChannelSubscribed) {
-                                                        MaterialTheme.colorScheme.surface
-                                                    } else {
-                                                        Color.Transparent
-                                                    },
-                                            ),
-                                        shape = RoundedCornerShape(50),
-                                        modifier = Modifier.height(40.dp),
-                                    ) {
-                                        Text(
-                                            text = stringResource(if (isChannelSubscribed) R.string.subscribed else R.string.subscribe),
-                                            fontSize = 14.sp,
-                                            color = if (!isChannelSubscribed) MaterialTheme.colorScheme.error else LocalContentColor.current,
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.weight(1f))
-
-                                    Row(
-                                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        // Radio Button
-                                        if (!showLocal && !isGuest) {
-                                            artistPage?.artist?.radioEndpoint?.let { radioEndpoint ->
-                                                OutlinedButton(
-                                                    onClick = {
-                                                        playerConnection.playQueue(YouTubeQueue(radioEndpoint))
-                                                    },
-                                                    shape = RoundedCornerShape(50),
-                                                    modifier = Modifier.height(40.dp),
-                                                ) {
-                                                    Icon(
-                                                        painter = painterResource(R.drawable.radio),
-                                                        contentDescription = null,
-                                                        modifier = Modifier.size(20.dp),
-                                                    )
-                                                    Spacer(modifier = Modifier.width(8.dp))
-                                                    Text(
-                                                        text = stringResource(R.string.radio),
-                                                        fontSize = 14.sp,
-                                                    )
-                                                }
-                                            }
-                                        }
-
-                                        // Shuffle Button
-                                        if (!showLocal && !isGuest) {
-                                            artistPage?.artist?.shuffleEndpoint?.let { shuffleEndpoint ->
-                                                IconButton(
-                                                    onClick = {
-                                                        playerConnection.playQueue(YouTubeQueue(shuffleEndpoint))
-                                                    },
-                                                    modifier =
-                                                        Modifier
-                                                            .size(48.dp)
-                                                            .background(
-                                                                MaterialTheme.colorScheme.primary,
-                                                                RoundedCornerShape(24.dp),
-                                                            ),
-                                                ) {
-                                                    Icon(
-                                                        painter = painterResource(R.drawable.shuffle),
-                                                        contentDescription = "Shuffle",
-                                                        tint = MaterialTheme.colorScheme.onPrimary,
-                                                        modifier = Modifier.size(20.dp),
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(16.dp))
+                // FOLLOW / RADIO pills
+                item(key = "actions") {
+                    val radioEndpoint = if (!showLocal && !isGuest) artistPage?.artist?.radioEndpoint else null
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(top = 4.dp, bottom = 20.dp)
+                                .animateItem(),
+                    ) {
+                        SpotifyOutlinePill(
+                            text = stringResource(if (isChannelSubscribed) R.string.spotify_following else R.string.spotify_follow),
+                            highlighted = isChannelSubscribed,
+                            onClick = { viewModel.toggleChannelSubscription() },
+                        )
+                        if (radioEndpoint != null) {
+                            SpotifyOutlinePill(
+                                text = stringResource(R.string.radio).uppercase(),
+                                onClick = { playerConnection.playQueue(YouTubeQueue(radioEndpoint)) },
+                            )
                         }
                     }
                 }
 
                 // About Artist Section
-                if (!showLocal && (showArtistDescription || showArtistSubscriberCount || showMonthlyListeners)) {
+                if (!showLocal && showArtistDescription) {
                     val description = artistPage?.description
                     val descriptionRuns = artistPage?.descriptionRuns
                     val subscriberCount = artistPage?.subscriberCountText
-                    val monthlyListeners = artistPage?.monthlyListenerCount
 
-                    if ((showArtistDescription && !description.isNullOrEmpty()) ||
-                        (showArtistSubscriberCount && !subscriberCount.isNullOrEmpty()) ||
-                        (showMonthlyListeners && !monthlyListeners.isNullOrEmpty())
-                    ) {
+                    if (!description.isNullOrEmpty() || !descriptionRuns.isNullOrEmpty()) {
                         item(key = "about_artist") {
                             Column(
                                 modifier =
                                     Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 16.dp)
-                                        .padding(bottom = 16.dp)
+                                        .padding(bottom = 24.dp)
                                         .animateItem(),
                             ) {
-                                if (showArtistDescription && (!description.isNullOrEmpty() || !descriptionRuns.isNullOrEmpty())) {
-                                    Text(
-                                        text = stringResource(R.string.about_artist),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(bottom = 8.dp),
-                                    )
-                                }
-
-                                if (showArtistSubscriberCount && !subscriberCount.isNullOrEmpty()) {
-                                    Text(
-                                        text = subscriberCount,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(bottom = 4.dp),
-                                    )
-                                }
-
-                                if (showMonthlyListeners && !monthlyListeners.isNullOrEmpty()) {
-                                    Text(
-                                        text = monthlyListeners,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier =
-                                            Modifier.padding(
-                                                bottom =
-                                                    if (showArtistDescription &&
-                                                        !description.isNullOrEmpty()
-                                                    ) {
-                                                        8.dp
-                                                    } else {
-                                                        0.dp
-                                                    },
-                                            ),
-                                    )
-                                }
-
-                                if (showArtistDescription && (!description.isNullOrEmpty() || !descriptionRuns.isNullOrEmpty())) {
+                                ArtistSectionTitle(title = stringResource(R.string.about_artist))
+                                Column(
+                                    modifier =
+                                        Modifier
+                                            .padding(horizontal = 16.dp)
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(MaterialTheme.colorScheme.surfaceContainer)
+                                            .padding(16.dp),
+                                ) {
+                                    if (showArtistSubscriberCount && !subscriberCount.isNullOrEmpty()) {
+                                        Text(
+                                            text = subscriberCount.uppercase(),
+                                            fontFamily = SpotifyFontFamily,
+                                            fontWeight = FontWeight.Medium,
+                                            fontSize = 11.sp,
+                                            letterSpacing = 1.5.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(bottom = 8.dp),
+                                        )
+                                    }
                                     ExpandableText(
                                         text = description.orEmpty(),
                                         runs =
@@ -519,7 +488,7 @@ fun ArtistScreen(
                                                     url = it.navigationEndpoint?.urlEndpoint?.url,
                                                 )
                                             },
-                                        collapsedMaxLines = 3,
+                                        collapsedMaxLines = 4,
                                     )
                                 }
                             }
@@ -539,8 +508,8 @@ fun ArtistScreen(
                 if (showLocal) {
                     if (librarySongs.isNotEmpty()) {
                         item(key = "local_songs_title") {
-                            NavigationTitle(
-                                title = stringResource(R.string.songs),
+                            ArtistSectionTitle(
+                                title = stringResource(R.string.popular),
                                 modifier = Modifier.animateItem(),
                                 onClick = {
                                     navController.navigate("artist/${viewModel.artistId}/songs")
@@ -555,11 +524,12 @@ fun ArtistScreen(
                                 librarySongs
                             }
                         itemsIndexed(
-                            items = filteredLibrarySongs,
+                            items = if (songsExpanded) filteredLibrarySongs else filteredLibrarySongs.take(popularCount),
                             key = { index, item -> "local_song_${item.id}_$index" },
                         ) { index, song ->
                             SongListItem(
                                 song = song,
+                                albumIndex = index + 1,
                                 showInLibraryIcon = true,
                                 isActive = song.id == mediaMetadata?.id,
                                 isPlaying = isPlaying,
@@ -613,9 +583,15 @@ fun ArtistScreen(
                         }
                     }
 
+                    if (librarySongs.size > popularCount) {
+                        item(key = "songs_toggle") {
+                            SeeMoreToggle(expanded = songsExpanded, onClick = { songsExpanded = !songsExpanded })
+                        }
+                    }
+
                     if (libraryAlbums.isNotEmpty()) {
                         item(key = "local_albums_title") {
-                            NavigationTitle(
+                            ArtistSectionTitle(
                                 title = stringResource(R.string.albums),
                                 modifier = Modifier.animateItem(),
                                 onClick = {
@@ -668,8 +644,8 @@ fun ArtistScreen(
                     artistPage?.sections?.forEachIndexed { index, section ->
                         if (section.items.isNotEmpty()) {
                             item(key = "section_${section.title}") {
-                                NavigationTitle(
-                                    title = section.title,
+                                ArtistSectionTitle(
+                                    title = if (index == firstSongSectionIndex) stringResource(R.string.popular) else section.title,
                                     modifier = Modifier.animateItem(),
                                     onClick =
                                         section.moreEndpoint?.let {
@@ -684,12 +660,15 @@ fun ArtistScreen(
                         }
 
                         if ((section.items.firstOrNull() as? SongItem)?.album != null) {
-                            items(
-                                items = distinctItemsBySection.getOrNull(index) ?: section.items,
-                                key = { "youtube_song_${it.id}" },
-                            ) { song ->
+                            val allSongs = distinctItemsBySection.getOrNull(index) ?: section.items
+                            val isPopular = index == firstSongSectionIndex
+                            itemsIndexed(
+                                items = if (isPopular && !songsExpanded) allSongs.take(popularCount) else allSongs,
+                                key = { _, it -> "youtube_song_${it.id}" },
+                            ) { songIndex, song ->
                                 YouTubeListItem(
                                     item = song as SongItem,
+                                    albumIndex = if (isPopular) songIndex + 1 else null,
                                     isActive = mediaMetadata?.id == song.id,
                                     isPlaying = isPlaying,
                                     trailingContent = {
@@ -737,6 +716,13 @@ fun ArtistScreen(
                                                 },
                                             ).animateItem(),
                                 )
+                            }
+                            if (index == firstSongSectionIndex &&
+                                (distinctItemsBySection.getOrNull(index) ?: section.items).size > popularCount
+                            ) {
+                                item(key = "songs_toggle") {
+                                    SeeMoreToggle(expanded = songsExpanded, onClick = { songsExpanded = !songsExpanded })
+                                }
                             }
                         } else {
                             item(key = "section_list_${section.title}") {
@@ -863,7 +849,6 @@ fun ArtistScreen(
             }
         }
 
-        val isScrollingUp = lazyListState.isScrollingUp()
         val showLocalFab = librarySongs.isNotEmpty() && libraryArtist?.artist?.isLocal != true
 
         // Library/Local Toggle FAB
@@ -877,128 +862,20 @@ fun ArtistScreen(
             },
         )
 
-        // Play All FAB (Stacked above Library/Local FAB if visible)
-        val canPlayAll =
-            !isGuest && (
-                (showLocal && librarySongs.isNotEmpty()) ||
-                    (
-                        !showLocal && artistPage?.sections?.any {
-                            (it.items.firstOrNull() as? SongItem)?.album != null
-                        } == true
-                    )
-            )
-
-        if (canPlayAll) {
-            androidx.compose.animation.AnimatedVisibility(
-                visible = isScrollingUp,
-                enter = androidx.compose.animation.slideInVertically { it * 2 },
-                exit = androidx.compose.animation.slideOutVertically { it * 2 },
-                modifier =
-                    Modifier
-                        .align(Alignment.BottomEnd)
-                        .windowInsetsPadding(
-                            LocalPlayerAwareWindowInsets.current
-                                .only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
-                        )
-                        // Add padding to position it above the other FAB (56dp height + 16dp padding + 8dp spacing)
-                        // If the other FAB is visible.
-                        .padding(bottom = if (showLocalFab) 64.dp else 0.dp),
-            ) {
-                val onPlayAllClick: () -> Unit = {
-                    if (!isGuest) {
-                        if (showLocal) {
-                            if (librarySongs.isNotEmpty()) {
-                                playerConnection.playQueue(
-                                    ListQueue(
-                                        title = displayArtistName ?: "Unknown Artist",
-                                        items = librarySongs.map { it.toMediaItem() },
-                                    ),
-                                )
-                            }
-                        } else if (artistPage != null) {
-                            val songSection =
-                                artistPage.sections.find { section ->
-                                    (section.items.firstOrNull() as? SongItem)?.album != null
-                                }
-
-                            val moreEndpoint = songSection?.moreEndpoint
-                            if (moreEndpoint != null) {
-                                coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                                    val result = YouTube.artistItems(moreEndpoint).getOrNull()
-                                    withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                        if (result != null && result.items.isNotEmpty()) {
-                                            val songs = result.items.filterIsInstance<SongItem>().map { it.toMediaItem() }
-                                            playerConnection.playQueue(
-                                                ListQueue(
-                                                    title = displayArtistName ?: artistPage.artist.title,
-                                                    items = songs,
-                                                ),
-                                            )
-                                        } else {
-                                            // Fallback to loaded items
-                                            val songs = songSection.items.filterIsInstance<SongItem>().map { it.toMediaItem() }
-                                            if (songs.isNotEmpty()) {
-                                                playerConnection.playQueue(
-                                                    ListQueue(
-                                                        title = displayArtistName ?: artistPage.artist.title,
-                                                        items = songs,
-                                                    ),
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            } else if (songSection != null) {
-                                // Use loaded items if no more endpoint
-                                val songs = songSection.items.filterIsInstance<SongItem>().map { it.toMediaItem() }
-                                playerConnection.playQueue(
-                                    ListQueue(
-                                        title = displayArtistName ?: artistPage.artist.title,
-                                        items = songs,
-                                    ),
-                                )
-                            } else {
-                                // Fallback to shuffle endpoint (stripped) if no song section found
-                                val shuffleEndpoint = artistPage.artist.shuffleEndpoint
-                                if (shuffleEndpoint != null) {
-                                    val endpoint =
-                                        if (shuffleEndpoint.playlistId != null) {
-                                            WatchEndpoint(
-                                                playlistId = shuffleEndpoint.playlistId,
-                                                params = null, // Remove shuffle params to play in order
-                                                videoId = null, // Ensure videoId is null to start from beginning of playlist
-                                            )
-                                        } else {
-                                            shuffleEndpoint
-                                        }
-                                    playerConnection.playQueue(YouTubeQueue(endpoint))
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (showLocalFab) {
-                    androidx.compose.material3.SmallFloatingActionButton(
-                        modifier = Modifier.padding(16.dp).offset(x = (-4).dp), // Align center with standard FAB (56dp vs 48dp)
-                        onClick = onPlayAllClick,
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.play),
-                            contentDescription = "Play All",
+        // Green SHUFFLE PLAY pill: rides at the bottom of the hero, then sticks under the top bar
+        ShufflePlayOverlay(listState = lazyListState, visible = canShuffle, headerKey = "header") {
+            if (!isGuest) {
+                if (showLocal) {
+                    if (librarySongs.isNotEmpty()) {
+                        playerConnection.playQueue(
+                            ListQueue(
+                                title = displayArtistName ?: "Unknown Artist",
+                                items = librarySongs.shuffled().map { it.toMediaItem() },
+                            ),
                         )
                     }
                 } else {
-                    androidx.compose.material3.FloatingActionButton(
-                        modifier = Modifier.padding(16.dp),
-                        onClick = onPlayAllClick,
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.play),
-                            contentDescription = "Play All",
-                            modifier = Modifier.size(32.dp),
-                        )
-                    }
+                    artistPage?.artist?.shuffleEndpoint?.let { playerConnection.playQueue(YouTubeQueue(it)) }
                 }
             }
         }
@@ -1012,8 +889,17 @@ fun ArtistScreen(
         )
     }
 
-    TopAppBar(
-        title = { if (!transparentAppBar) Text(displayArtistName.orEmpty()) },
+    SpotifyTopAppBar(
+        scrolled = scrolledPastHero,
+        title = {
+            if (scrolledPastHero) {
+                Text(
+                    text = displayArtistName.orEmpty(),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        },
         navigationIcon = {
             IconButton(
                 onClick = navController::navigateUp,
@@ -1042,11 +928,96 @@ fun ArtistScreen(
                 )
             }
         },
-        colors =
-            if (transparentAppBar) {
-                TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
-            } else {
-                TopAppBarDefaults.topAppBarColors()
-            },
     )
+}
+
+/** Left-aligned bold section header (Popular, Albums, About ...) with an optional "see all" arrow. */
+@Composable
+private fun ArtistSectionTitle(
+    title: String,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
+                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+    ) {
+        Text(
+            text = title,
+            fontFamily = SpotifyFontFamily,
+            fontWeight = FontWeight.Bold,
+            fontSize = 20.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        if (onClick != null) {
+            Icon(
+                painter = painterResource(R.drawable.arrow_forward),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+    }
+}
+
+/** Small outlined pill (FOLLOW / FOLLOWING / RADIO) with the Spotify press-shrink effect. */
+@Composable
+private fun SpotifyOutlinePill(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    highlighted: Boolean = false,
+) {
+    val color = if (highlighted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier =
+            modifier
+                .height(34.dp)
+                .spotifyPressable(onClick = onClick)
+                .border(
+                    1.dp,
+                    if (highlighted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                    RoundedCornerShape(percent = 50),
+                ).padding(horizontal = 22.dp),
+    ) {
+        Text(
+            text = text,
+            color = color,
+            fontFamily = SpotifyFontFamily,
+            fontWeight = FontWeight.Bold,
+            fontSize = 12.sp,
+            letterSpacing = 2.sp,
+            maxLines = 1,
+        )
+    }
+}
+
+/** "SEE MORE" / "SEE LESS" text button under the Popular list. */
+@Composable
+private fun SeeMoreToggle(
+    expanded: Boolean,
+    onClick: () -> Unit,
+) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+    ) {
+        Text(
+            text = stringResource(if (expanded) R.string.spotify_see_less else R.string.spotify_see_more),
+            fontFamily = SpotifyFontFamily,
+            fontWeight = FontWeight.Bold,
+            fontSize = 12.sp,
+            letterSpacing = 2.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.spotifyPressable(onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+    }
 }

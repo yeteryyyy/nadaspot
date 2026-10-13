@@ -2,4 +2,9 @@
 <resources>
     <string name="made_for_you">Made For You</string>
     <string name="recently_played">Recently Played</string>
+    <string name="spotify_follow">FOLLOW</string>
+    <string name="spotify_following">FOLLOWING</string>
+    <string name="spotify_see_more">SEE MORE</string>
+    <string name="spotify_see_less">SEE LESS</string>
+    <string name="popular">Popular</string>
 </resources>

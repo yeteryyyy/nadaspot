@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -83,10 +84,12 @@ import com.metrolist.music.constants.SeekExtraSeconds
 import com.metrolist.music.constants.SwipeThumbnailKey
 import com.metrolist.music.constants.ThumbnailCornerRadius
 import com.metrolist.music.listentogether.RoomRole
-import com.metrolist.music.ui.component.CastButton
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.delay
+
+/** Space between the current cover and the neighbouring covers peeking in from the screen edges. */
+private val ThumbnailPeekGap = 44.dp
 
 /**
  * Pre-calculated thumbnail dimensions to avoid repeated calculations during recomposition.
@@ -129,7 +132,8 @@ private fun calculateThumbnailDimensions(
         containerWidth - (horizontalPadding * 2)
     }
     return ThumbnailDimensions(
-        itemWidth = containerWidth,
+        // Portrait: items are only as wide as cover + gap, so the prev/next covers peek in at the edges
+        itemWidth = if (isLandscape) containerWidth else effectiveSize + ThumbnailPeekGap,
         containerSize = containerWidth,
         thumbnailSize = effectiveSize,
         cornerRadius = cornerRadius * 2
@@ -377,6 +381,10 @@ fun Thumbnail(
                     LazyHorizontalGrid(
                         state = thumbnailLazyGridState,
                         rows = GridCells.Fixed(1),
+                        // Centers the current item (and the first/last item) now that items are narrower than the screen
+                        contentPadding = PaddingValues(
+                            horizontal = if (isLandscape) 0.dp else ((maxWidth - dimensions.itemWidth) / 2).coerceAtLeast(0.dp),
+                        ),
                         flingBehavior = rememberSnapFlingBehavior(thumbnailSnapLayoutInfoProvider),
                         userScrollEnabled = isScrollEnabled,
                         modifier = if (isLandscape) {
@@ -520,7 +528,7 @@ private fun ThumbnailItem(
                         .fillMaxSize()
                 }
             )
-            .padding(horizontal = SpotifyArtPadding)
+            .padding(horizontal = if (isLandscape) SpotifyArtPadding else ThumbnailPeekGap / 2)
             .graphicsLayer {
                 // Render entire thumbnail item on separate hardware layer for smooth animations
                 compositingStrategy = CompositingStrategy.Offscreen
@@ -577,14 +585,6 @@ private fun ThumbnailItem(
                     cropArtwork = cropAlbumArt
                 )
             }
-            
-            // Cast button at top-right corner of thumbnail
-            CastButton(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(8.dp),
-                tintColor = textBackgroundColor
-            )
         }
     }
 }

@@ -5,6 +5,13 @@
 
 package com.metrolist.music.ui.screens.playlist
 
+import com.metrolist.music.ui.component.ShufflePlayBlockHeight
+import com.metrolist.music.ui.component.ShufflePlayOverlay
+import com.metrolist.music.ui.component.SpotifyHeaderGradient
+import com.metrolist.music.ui.component.SpotifyTopAppBar
+import com.metrolist.music.extensions.toMediaItem
+import com.metrolist.music.playback.queues.ListQueue
+import com.metrolist.music.ui.component.ShufflePlayButton
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -191,6 +198,8 @@ fun OnlinePlaylistScreen(
     }
 
     Box(Modifier.fillMaxSize()) {
+        SpotifyHeaderGradient(lazyListState)
+
         LazyColumn(
             state = lazyListState,
             contentPadding = LocalPlayerAwareWindowInsets.current.union(WindowInsets.ime).asPaddingValues(),
@@ -360,7 +369,20 @@ fun OnlinePlaylistScreen(
             }
         }
 
-        TopAppBar(
+        ShufflePlayOverlay(listState = lazyListState, visible = !isSearching) {
+                            if (!isListenTogetherGuest && songs.isNotEmpty()) {
+                                playerConnection.playQueue(
+                                    ListQueue(
+                                        title = playlist?.title,
+                                        items = songs.shuffled().map { it.toMediaItem() },
+                                    ),
+                                )
+                            }
+                        }
+
+        SpotifyTopAppBar(
+            scrolled = lazyListState.firstVisibleItemIndex > 0,
+            forceOpaque = isSearching || inSelectMode,
             title = {
                 if (inSelectMode) {
                     Text(
@@ -468,6 +490,24 @@ fun OnlinePlaylistScreen(
                     ) {
                         Icon(
                             painter = painterResource(R.drawable.search),
+                            contentDescription = null,
+                        )
+                    }
+                    IconButton(
+                        onClick = {
+                            val pl = playlist ?: return@IconButton
+                            menuState.show {
+                                YouTubePlaylistMenu(
+                                    playlist = pl,
+                                    songs = songs,
+                                    coroutineScope = coroutineScope,
+                                    onDismiss = menuState::dismiss,
+                                )
+                            }
+                        },
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.more_vert),
                             contentDescription = null,
                         )
                     }
@@ -613,135 +653,7 @@ private fun OnlinePlaylistHeader(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // Like Button - Smaller secondary button
-            Surface(
-                onClick = {
-                    if (dbPlaylist != null) {
-                        database.transaction {
-                            val currentPlaylist = dbPlaylist.playlist
-                            update(currentPlaylist, playlist)
-                            update(currentPlaylist.toggleLike())
-                        }
-                    } else {
-                        coroutineScope.launch(Dispatchers.IO) {
-                            val playlistEntity =
-                                PlaylistEntity(
-                                    name = playlist.title,
-                                    browseId = playlist.id,
-                                    thumbnailUrl = playlist.thumbnail,
-                                    isEditable = playlist.isEditable,
-                                    remoteSongCount =
-                                        playlist.songCountText?.let {
-                                            Regex("""\d+""").find(it)?.value?.toIntOrNull()
-                                        },
-                                    playEndpointParams = playlist.playEndpoint?.params,
-                                    shuffleEndpointParams = playlist.shuffleEndpoint?.params,
-                                    radioEndpointParams = playlist.radioEndpoint?.params,
-                                ).toggleLike()
-                            val songMetadata = songs.map { it.toMediaMetadata() }
-                            database.withTransaction {
-                                insert(playlistEntity)
-                                songMetadata.onEach { insert(it) }
-                                val songIds = songMetadata.map { it.id to it.setVideoId }
-                                val createdPlaylist =
-                                    database.playlistBlocking(playlistEntity.id)
-                                        ?: throw IllegalStateException("Failed to create playlist")
-                                database.addSongsToPlaylist(createdPlaylist, songIds)
-                            }
-                        }
-                    }
-                },
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.size(48.dp),
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter =
-                            painterResource(
-                                if (dbPlaylist?.playlist?.bookmarkedAt != null) R.drawable.favorite else R.drawable.favorite_border,
-                            ),
-                        contentDescription = null,
-                        tint =
-                            if (dbPlaylist?.playlist?.bookmarkedAt != null) {
-                                MaterialTheme.colorScheme.error
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
-            }
 
-            // Play Button - Larger primary circular button
-            Surface(
-                onClick = {
-                    if (!isListenTogetherGuest && songs.isNotEmpty()) {
-                        playerConnection.playQueue(
-                            YouTubePlaylistQueue(
-                                playlistId = playlist.id,
-                                playlistTitle = playlist.title,
-                                initialSongs = songs,
-                                initialContinuation = continuation,
-                            ),
-                        )
-                    }
-                },
-                color = MaterialTheme.colorScheme.primary,
-                shape = CircleShape,
-                modifier = Modifier.size(72.dp),
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.play),
-                        contentDescription = stringResource(R.string.play),
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(32.dp),
-                    )
-                }
-            }
-
-            // Menu Button - Smaller secondary button
-            Surface(
-                onClick = {
-                    menuState.show {
-                        YouTubePlaylistMenu(
-                            playlist = playlist,
-                            songs = songs,
-                            coroutineScope = coroutineScope,
-                            onDismiss = menuState::dismiss,
-                        )
-                    }
-                },
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.size(48.dp),
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.more_vert),
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
-            }
-        }
+        Spacer(modifier = Modifier.height(ShufflePlayBlockHeight))
     }
 }

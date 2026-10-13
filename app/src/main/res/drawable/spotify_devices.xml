@@ -1,0 +1,24 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Spotify "devices" glyph (traced from the 2018 app): device outline open on the right + foot, speaker with tweeter and woofer.
+         Meant to be drawn at ~16dp; stroke is 1.5 units (= 1dp at 16dp). -->
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.5"
+        android:pathData="M9,3H0.75V16.5H9M4.5,21H9" />
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.5"
+        android:strokeLineJoin="miter"
+        android:pathData="M12.75,3H23.25V21H12.75Z" />
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.5"
+        android:pathData="M15.75,14.36A2.25,2.25 0 1 0 20.25,14.36A2.25,2.25 0 1 0 15.75,14.36Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M16.9,7.05A1.1,1.1 0 1 0 19.1,7.05A1.1,1.1 0 1 0 16.9,7.05Z" />
+</vector>

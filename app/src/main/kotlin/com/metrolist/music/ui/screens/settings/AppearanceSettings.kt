@@ -58,8 +58,11 @@ import com.metrolist.music.constants.CropAlbumArtKey
 import com.metrolist.music.constants.DefaultOpenTabKey
 import com.metrolist.music.constants.DensityScale
 import com.metrolist.music.constants.DensityScaleKey
+import com.metrolist.music.constants.LetterboxMode
+import com.metrolist.music.constants.LetterboxModeKey
 import com.metrolist.music.constants.DynamicThemeKey
 import com.metrolist.music.constants.EnableDynamicIconKey
+import com.metrolist.music.constants.RenameAppSpotifyKey
 import com.metrolist.music.constants.EnableHighRefreshRateKey
 import com.metrolist.music.constants.EnableLandscapeScalingKey
 import com.metrolist.music.constants.ExperimentalLyricsKey
@@ -136,10 +139,19 @@ fun AppearanceSettings(
             EnableDynamicIconKey,
             defaultValue = true,
         )
+    val (renameAppSpotify, onRenameAppSpotifyPrefChange) =
+        rememberPreference(
+            RenameAppSpotifyKey,
+            defaultValue = false,
+        )
     val iconContext = LocalContext.current
     val onEnableDynamicIconChange: (Boolean) -> Unit = { newValue ->
         onEnableDynamicIconPrefChange(newValue)
-        IconUtils.setIcon(iconContext, newValue)
+        IconUtils.setIcon(iconContext, newValue, renameAppSpotify)
+    }
+    val onRenameAppSpotifyChange: (Boolean) -> Unit = { newValue ->
+        onRenameAppSpotifyPrefChange(newValue)
+        IconUtils.setIcon(iconContext, enableDynamicIcon, newValue)
     }
     val (enableHighRefreshRate, onEnableHighRefreshRateChange) =
         rememberPreference(
@@ -280,6 +292,8 @@ fun AppearanceSettings(
 
     val (densityScale, onDensityScaleChange) = rememberPreference(DensityScaleKey, defaultValue = 1f)
     var showDensityScaleDialog by rememberSaveable { mutableStateOf(false) }
+    val (letterboxModeName, onLetterboxModeChange) = rememberPreference(LetterboxModeKey, defaultValue = LetterboxMode.OFF.name)
+    var showLetterboxDialog by rememberSaveable { mutableStateOf(false) }
 
     val (listenTogetherInTopBar, onListenTogetherInTopBarChange) =
         rememberPreference(
@@ -696,6 +710,43 @@ fun AppearanceSettings(
         }
     }
 
+    if (showLetterboxDialog) {
+        DefaultDialog(
+            onDismiss = { showLetterboxDialog = false },
+            buttons = {
+                TextButton(onClick = { showLetterboxDialog = false }) {
+                    Text(text = stringResource(android.R.string.cancel))
+                }
+            },
+        ) {
+            Column {
+                LetterboxMode.entries.forEach { mode ->
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onLetterboxModeChange(mode.name)
+                                    showLetterboxDialog = false
+                                }.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = mode.label,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color =
+                                if (letterboxModeName == mode.name) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                },
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     if (showSliderOptionDialog) {
         DefaultDialog(
             buttons = {
@@ -1006,6 +1057,30 @@ fun AppearanceSettings(
                                 )
                             },
                             onClick = { onEnableDynamicIconChange(!enableDynamicIcon) },
+                        ),
+                    )
+                    add(
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.palette),
+                            title = { Text(stringResource(R.string.rename_app_spotify)) },
+                            description = { Text(stringResource(R.string.rename_app_spotify_desc)) },
+                            trailingContent = {
+                                Switch(
+                                    checked = renameAppSpotify,
+                                    onCheckedChange = onRenameAppSpotifyChange,
+                                    thumbContent = {
+                                        Icon(
+                                            painter =
+                                                painterResource(
+                                                    id = if (renameAppSpotify) R.drawable.check else R.drawable.close,
+                                                ),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(SwitchDefaults.IconSize),
+                                        )
+                                    },
+                                )
+                            },
+                            onClick = { onRenameAppSpotifyChange(!renameAppSpotify) },
                         ),
                     )
                     add(
@@ -1717,6 +1792,14 @@ fun AppearanceSettings(
                             Text(DensityScale.fromValue(densityScale).label)
                         },
                         onClick = { showDensityScaleDialog = true },
+                    ),
+                    Material3SettingsItem(
+                        icon = painterResource(R.drawable.grid_view),
+                        title = { Text(stringResource(R.string.letterbox)) },
+                        description = {
+                            Text(LetterboxMode.fromName(letterboxModeName).label)
+                        },
+                        onClick = { showLetterboxDialog = true },
                     ),
                 ),
         )

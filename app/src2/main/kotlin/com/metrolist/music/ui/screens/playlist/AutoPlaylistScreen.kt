@@ -5,6 +5,11 @@
 
 package com.metrolist.music.ui.screens.playlist
 
+import com.metrolist.music.ui.component.ShufflePlayBlockHeight
+import com.metrolist.music.ui.component.ShufflePlayOverlay
+import com.metrolist.music.ui.component.SpotifyHeaderGradient
+import com.metrolist.music.ui.component.SpotifyTopAppBar
+import com.metrolist.music.ui.component.ShufflePlayButton
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -503,6 +508,8 @@ fun AutoPlaylistScreen(
                     },
                 ),
     ) {
+        SpotifyHeaderGradient(state)
+
         LazyColumn(
             state = state,
             contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
@@ -568,6 +575,7 @@ fun AutoPlaylistScreen(
                         }
 
                         SongListItem(
+                            showThumbnail = false,
                             song = song,
                             isActive = song.song.id == mediaMetadata?.id,
                             isPlaying = isPlaying,
@@ -707,7 +715,18 @@ fun AutoPlaylistScreen(
             }
         }
 
-        TopAppBar(
+        ShufflePlayOverlay(listState = state, visible = !isSearching) {
+                            playerConnection.playQueue(
+                                ListQueue(
+                                    title = playlist,
+                                    items = songs!!.shuffled().map { it.toMediaItem() },
+                                ),
+                            )
+                        }
+
+        SpotifyTopAppBar(
+            scrolled = state.firstVisibleItemIndex > 0,
+            forceOpaque = isSearching || inSelectMode,
             title = {
                 when {
                     inSelectMode -> {
@@ -746,10 +765,9 @@ fun AutoPlaylistScreen(
                     }
 
                     else -> {
-                        Text(
-                            text = playlist,
-                            style = MaterialTheme.typography.titleLarge,
-                        )
+                        if (state.firstVisibleItemIndex > 0) {
+                            Text(text = playlist)
+                        }
                     }
                 }
             },
@@ -824,6 +842,41 @@ fun AutoPlaylistScreen(
                     ) {
                         Icon(
                             painter = painterResource(R.drawable.search),
+                            contentDescription = null,
+                        )
+                    }
+                    IconButton(
+                        onClick = {
+                            val allSongs = songs ?: return@IconButton
+                            menuState.show {
+                                AutoPlaylistMenu(
+                                    downloadState = downloadState,
+                                    onQueue = { playerConnection.addToQueue(allSongs.map { it.toMediaItem() }) },
+                                    onDownload = {
+                                        when (downloadState) {
+                                        Download.STATE_COMPLETED -> { showRemoveDownloadDialog = true }
+                                        Download.STATE_DOWNLOADING -> {
+                                            allSongs.forEach { song ->
+                                                DownloadService.sendRemoveDownload(
+                                                    context,
+                                                    ExoDownloadService::class.java,
+                                                    song.song.id,
+                                                    false,
+                                                )
+                                            }
+                                        }
+                                        else -> allSongs.forEach { downloadUtil.download(it) }
+                                    }
+                                    },
+                                    onDismiss = { menuState.dismiss() },
+                                    songs = allSongs,
+                                    playlistName = playlist,
+                                )
+                            }
+                        },
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.more_vert),
                             contentDescription = null,
                         )
                     }
@@ -908,122 +961,8 @@ private fun AutoPlaylistHeader(
         Spacer(modifier = Modifier.height(24.dp))
 
         // Action Buttons Row
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // Shuffle Button - Smaller secondary button
-            androidx.compose.material3.Surface(
-                onClick = {
-                    playerConnection.playQueue(
-                        ListQueue(
-                            title = name,
-                            items = songs.shuffled().map { it.toMediaItem() },
-                        ),
-                    )
-                },
-                shape = androidx.compose.foundation.shape.CircleShape,
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.size(48.dp),
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.shuffle),
-                        contentDescription = stringResource(R.string.shuffle),
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
-            }
 
-            // Play Button - Larger primary circular button
-            Surface(
-                onClick = {
-                    playerConnection.playQueue(
-                        ListQueue(
-                            title = name,
-                            items = songs.map { it.toMediaItem() },
-                        ),
-                    )
-                },
-                color = MaterialTheme.colorScheme.primary,
-                shape = androidx.compose.foundation.shape.CircleShape,
-                modifier = Modifier.size(72.dp),
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.play),
-                        contentDescription = stringResource(R.string.play),
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(32.dp),
-                    )
-                }
-            }
-
-            // Menu Button - Smaller secondary button
-            Surface(
-                onClick = {
-                    menuState.show {
-                        AutoPlaylistMenu(
-                            downloadState = downloadState,
-                            onQueue = {
-                                playerConnection.addToQueue(
-                                    songs.map { it.toMediaItem() },
-                                )
-                            },
-                            onDownload = {
-                                when (downloadState) {
-                                    Download.STATE_COMPLETED -> {
-                                        onShowRemoveDownloadDialog()
-                                    }
-
-                                    Download.STATE_DOWNLOADING -> {
-                                        songs.forEach { song ->
-                                            DownloadService.sendRemoveDownload(
-                                                context,
-                                                ExoDownloadService::class.java,
-                                                song.song.id,
-                                                false,
-                                            )
-                                        }
-                                    }
-
-                                    else -> {
-                                        songs.forEach { downloadUtil.download(it) }
-                                    }
-                                }
-                            },
-                            onDismiss = { menuState.dismiss() },
-                            songs = songs,
-                            playlistName = name,
-                        )
-                    }
-                },
-                shape = androidx.compose.foundation.shape.CircleShape,
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.size(48.dp),
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.more_vert),
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
-            }
-        }
+        Spacer(modifier = Modifier.height(ShufflePlayBlockHeight))
     }
 }
 

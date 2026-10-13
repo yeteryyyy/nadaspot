@@ -1,20 +1,40 @@
 package com.metrolist.music.ui.component
 
+import android.app.Dialog
 import android.content.Context
+import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.view.ContextThemeWrapper
+import android.view.Gravity
+import android.view.ViewGroup
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.sp
+import com.metrolist.music.ui.theme.SpotifyFontFamily
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
@@ -65,24 +85,69 @@ fun CastButton(
             update = { button ->
                 button.contentDescription = contentDescription
                 ContextCompat
-                    .getDrawable(
-                        context,
-                        if (isCasting) R.drawable.cast_connected else R.drawable.cast,
-                    )?.mutate()
-                    ?.let { drawable ->
-                        DrawableCompat.wrap(drawable).also {
-                            DrawableCompat.setTint(it, iconTint.toArgb())
-                            button.setRemoteIndicatorDrawable(it)
-                        }
+                .getDrawable(
+                    context,
+                    if (isCasting) R.drawable.cast_connected else R.drawable.cast,
+                )?.mutate()
+                ?.let { drawable ->
+                    DrawableCompat.wrap(drawable).also {
+                        DrawableCompat.setTint(it, iconTint.toArgb())
+                        button.setRemoteIndicatorDrawable(it)
                     }
+                }
             },
             modifier = modifier.size(56.dp),
         )
     }
 }
 
-private fun Context.castThemedContext() =
-    ContextThemeWrapper(this, androidx.appcompat.R.style.Theme_AppCompat_Light_NoActionBar)
+private fun Context.castThemedContext() = ContextThemeWrapper(this, R.style.Theme_SpotifyCast)
+
+/** Spotify 2018 sheet: docked to the bottom, full width, dark (#282828) with square corners, slides up. */
+private fun Dialog.dockAsSheet() {
+    window?.apply {
+        setGravity(Gravity.BOTTOM)
+        setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        setBackgroundDrawable(ColorDrawable(ContextCompat.getColor(context, R.color.spotify_cast_sheet)))
+        setWindowAnimations(R.style.SpotifyCastSheetAnimation)
+        setDimAmount(0.6f)
+    }
+}
+
+/* The media router dialogs re-apply their own window size while they open, so dock at every step. */
+private class SpotifyCastChooserDialog(context: Context) : MediaRouteChooserDialog(context) {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        dockAsSheet()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        dockAsSheet()
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        dockAsSheet()
+    }
+}
+
+private class SpotifyCastControllerDialog(context: Context) : MediaRouteControllerDialog(context) {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        dockAsSheet()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        dockAsSheet()
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        dockAsSheet()
+    }
+}
 
 private object CastDialogFactory : MediaRouteDialogFactory() {
     override fun onCreateChooserDialogFragment() = CastChooserDialogFragment()
@@ -91,11 +156,85 @@ private object CastDialogFactory : MediaRouteDialogFactory() {
 }
 
 internal class CastChooserDialogFragment : MediaRouteChooserDialogFragment() {
-    override fun onCreateChooserDialog(context: Context, savedInstanceState: Bundle?) =
-        MediaRouteChooserDialog(context.castThemedContext())
+    override fun onCreateChooserDialog(context: Context, savedInstanceState: Bundle?): MediaRouteChooserDialog =
+    SpotifyCastChooserDialog(context.castThemedContext())
 }
 
 internal class CastControllerDialogFragment : MediaRouteControllerDialogFragment() {
-    override fun onCreateControllerDialog(context: Context, savedInstanceState: Bundle?) =
-        MediaRouteControllerDialog(context.castThemedContext())
+    override fun onCreateControllerDialog(context: Context, savedInstanceState: Bundle?): MediaRouteControllerDialog =
+    SpotifyCastControllerDialog(context.castThemedContext())
+}
+
+/**
+ * "Devices Available" row (2018 Spotify) shown under the player controls. A transparent
+ * MediaRouteButton sits over the row, so tapping it opens the normal Google Cast chooser.
+ */
+@Composable
+fun CastDevicesRow(
+    modifier: Modifier = Modifier,
+    tintColor: Color = Color(0xFFB3B3B3),
+) {
+    val playerConnection = LocalPlayerConnection.current
+    val castHandler = playerConnection?.service?.castConnectionHandler
+    val isCasting by castHandler?.isCasting?.collectAsStateWithLifecycle() ?: remember { mutableStateOf(false) }
+    val castDeviceName by castHandler?.castDeviceName?.collectAsStateWithLifecycle() ?: remember { mutableStateOf<String?>(null) }
+    val preferredAudioDeviceId by castHandler?.preferredAudioDeviceId?.collectAsStateWithLifecycle()
+        ?: remember { mutableStateOf<Int?>(null) }
+    val audioOutputs by rememberAudioOutputs()
+    val (enabled) = rememberPreference(EnableGoogleCastKey, defaultValue = true)
+    var showSheet by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    LaunchedEffect(enabled) {
+        if (enabled) {
+            castHandler?.initialize()
+        } else if (isCasting) {
+            castHandler?.disconnect()
+        }
+    }
+
+    if (!enabled) return
+
+    // "Devices Available" until something other than the phone is connected, then that device's name
+    val connectedName = castDeviceName?.takeIf { isCasting && it.isNotBlank() }
+    val bluetoothOutput =
+        activeLocalOutput(audioOutputs, preferredAudioDeviceId, isCasting)?.takeIf { it.isBluetooth() }
+    val rowText = connectedName ?: bluetoothOutput?.displayName(context) ?: stringResource(R.string.devices_available)
+
+        val color = if (isCasting || bluetoothOutput != null) MaterialTheme.colorScheme.primary else tintColor
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier =
+                modifier
+                    .height(48.dp)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) { showSheet = true },
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.spotify_devices),
+                     contentDescription = null,
+                     tint = color,
+                     modifier = Modifier.size(16.dp),
+                )
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    text = rowText,
+                     color = color,
+                     fontSize = 16.sp,
+                     fontFamily = SpotifyFontFamily,
+                     maxLines = 1,
+                     overflow = TextOverflow.Ellipsis,
+                     modifier = Modifier.weight(1f, fill = false),
+                )
+            }
+            if (showSheet) {
+                AudioOutputSheet(onDismiss = { showSheet = false })
+            }
+        }
 }

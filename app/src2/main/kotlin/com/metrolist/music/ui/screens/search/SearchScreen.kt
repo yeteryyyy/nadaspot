@@ -188,43 +188,43 @@ fun SearchScreen(
                             value = query,
                             onValueChange = { query = it },
                             modifier =
-                                Modifier
-                                    .weight(1f)
-                                    .focusRequester(focusRequester),
-                            textStyle =
-                                TextStyle(
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    fontSize = 16.sp,
-                                ),
-                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                            singleLine = true,
-                            decorationBox = { innerTextField ->
-                                if (query.text.isEmpty()) {
-                                    Text(
-                                        text =
-                                            stringResource(
-                                                when (searchSource) {
-                                                    SearchSource.LOCAL -> R.string.search_library
-                                                    SearchSource.ONLINE -> R.string.search_yt_music
-                                                },
-                                            ),
-                                        style =
-                                            TextStyle(
-                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                                                fontSize = 16.sp,
-                                            ),
-                                    )
-                                }
-                                innerTextField()
-                            },
-                            keyboardOptions =
-                                KeyboardOptions(
-                                    imeAction = ImeAction.Search,
-                                ),
-                            keyboardActions =
-                                KeyboardActions(
-                                    onSearch = { onSearch(query.text) },
-                                ),
+                            Modifier
+                            .weight(1f)
+                            .focusRequester(focusRequester),
+                                       textStyle =
+                                       TextStyle(
+                                           color = MaterialTheme.colorScheme.onSurface,
+                                           fontSize = 16.sp,
+                                       ),
+                                       cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                                       singleLine = true,
+                                       decorationBox = { innerTextField ->
+                                           if (query.text.isEmpty()) {
+                                               Text(
+                                                   text =
+                                                   stringResource(
+                                                       when (searchSource) {
+                                                           SearchSource.LOCAL -> R.string.search_library
+                                                           SearchSource.ONLINE -> R.string.search
+                                                       },
+                                                   ),
+                                                    style =
+                                                    TextStyle(
+                                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                                              fontSize = 16.sp,
+                                                    ),
+                                               )
+                                           }
+                                           innerTextField()
+                                       },
+                                       keyboardOptions =
+                                       KeyboardOptions(
+                                           imeAction = ImeAction.Search,
+                                       ),
+                                       keyboardActions =
+                                       KeyboardActions(
+                                           onSearch = { onSearch(query.text) },
+                                       ),
                         )
 
                         Row {
@@ -232,31 +232,31 @@ fun SearchScreen(
                                 IconButton(onClick = { query = TextFieldValue("") }) {
                                     Icon(
                                         painter = painterResource(R.drawable.close),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurface,
+                                         contentDescription = null,
+                                         tint = MaterialTheme.colorScheme.onSurface,
                                     )
                                 }
                             }
                             IconButton(
                                 onClick = {
                                     searchSource =
-                                        if (searchSource == SearchSource.ONLINE) {
-                                            SearchSource.LOCAL
-                                        } else {
-                                            SearchSource.ONLINE
-                                        }
+                                    if (searchSource == SearchSource.ONLINE) {
+                                        SearchSource.LOCAL
+                                    } else {
+                                        SearchSource.ONLINE
+                                    }
                                 },
                             ) {
                                 Icon(
                                     painter =
-                                        painterResource(
-                                            when (searchSource) {
-                                                SearchSource.LOCAL -> R.drawable.library_music
-                                                SearchSource.ONLINE -> R.drawable.language
-                                            },
-                                        ),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurface,
+                                    painterResource(
+                                        when (searchSource) {
+                                            SearchSource.LOCAL -> R.drawable.library_music
+                                            SearchSource.ONLINE -> R.drawable.language
+                                        },
+                                    ),
+                                     contentDescription = null,
+                                     tint = MaterialTheme.colorScheme.onSurface,
                                 )
                             }
                         }
@@ -266,31 +266,31 @@ fun SearchScreen(
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(
                             painter = painterResource(R.drawable.arrow_back),
-                            contentDescription = stringResource(R.string.dismiss),
-                            tint = MaterialTheme.colorScheme.onSurface,
+                             contentDescription = stringResource(R.string.dismiss),
+                             tint = MaterialTheme.colorScheme.onSurface,
                         )
                     }
                 },
                 colors =
-                    TopAppBarDefaults.topAppBarColors(
-                        containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer,
-                    ),
+                TopAppBarDefaults.topAppBarColors(
+                    containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer,
+                ),
             )
         },
         containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.background,
     ) { paddingValues ->
         Box(
             modifier =
-                Modifier
-                    .padding(top = paddingValues.calculateTopPadding())
-                    .fillMaxSize(),
+            Modifier
+            .padding(top = paddingValues.calculateTopPadding())
+            .fillMaxSize(),
         ) {
             when (searchSource) {
                 SearchSource.LOCAL -> {
                     LocalSearchScreen(
                         query = query.text,
                         onDismiss = { navController.navigateUp() },
-                        pureBlack = pureBlack,
+                                      pureBlack = pureBlack,
                     )
                 }
 
@@ -316,27 +316,27 @@ fun SearchScreen(
     // Handle lifecycle events to manage keyboard visibility
     DisposableEffect(lifecycleOwner, isPlayerExpanded) {
         val observer =
-            LifecycleEventObserver { _, event ->
-                when (event) {
-                    Lifecycle.Event.ON_RESUME -> {
-                        if (isHandlingScrollToTop) return@LifecycleEventObserver
+        LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> {
+                    if (isHandlingScrollToTop) return@LifecycleEventObserver
                         // Always hide keyboard when resuming if player is expanded
                         if (isPlayerExpanded) {
                             keyboardController?.hide()
                             focusManager.clearFocus()
                         }
-                    }
+                }
 
-                    Lifecycle.Event.ON_PAUSE -> {
-                        if (isHandlingScrollToTop) return@LifecycleEventObserver
+                Lifecycle.Event.ON_PAUSE -> {
+                    if (isHandlingScrollToTop) return@LifecycleEventObserver
                         // Clear focus when pausing to prevent keyboard from showing on resume
                         focusManager.clearFocus()
                         keyboardController?.hide()
-                    }
-
-                    else -> {}
                 }
+
+                else -> {}
             }
+        }
         lifecycleOwner.lifecycle.addObserver(observer)
 
         // Initial check - hide keyboard if player is expanded

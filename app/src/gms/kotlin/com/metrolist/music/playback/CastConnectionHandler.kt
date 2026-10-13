@@ -1,6 +1,7 @@
 package com.metrolist.music.playback
 
 import android.content.Context
+import android.media.AudioDeviceInfo
 import android.net.Uri
 import androidx.media3.cast.RemoteCastPlayer
 import androidx.media3.cast.SessionAvailabilityListener
@@ -10,6 +11,7 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
 import com.google.android.gms.cast.framework.CastContext
 import com.metrolist.music.extensions.metadata
 import com.metrolist.music.ui.utils.resize
@@ -19,6 +21,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -51,6 +54,13 @@ class CastConnectionHandler(
 
     private val _castVolume = MutableStateFlow(1f)
     val castVolume: StateFlow<Float> = _castVolume.asStateFlow()
+
+    private val _preferredAudioDeviceId = MutableStateFlow<Int?>(null)
+
+    /** Id of the output (phone speaker / Bluetooth) the user picked, or null for Android's default routing. */
+    val preferredAudioDeviceId: StateFlow<Int?> = _preferredAudioDeviceId.asStateFlow()
+
+    private var preferredAudioDevice: AudioDeviceInfo? = null
 
     @Volatile
     var isSyncingFromCast = false
@@ -123,6 +133,25 @@ class CastConnectionHandler(
                 musicService.player.pause()
             }
         }
+
+    init {
+        // The service can swap its ExoPlayer instance (e.g. crossfade); keep the chosen output on the new one
+        scope.launch {
+            musicService.playerFlow.filterNotNull().collect { applyPreferredAudioDevice(it) }
+        }
+    }
+
+    /** Routes the local player's audio to [device]; null goes back to Android's default routing. */
+    fun setPreferredAudioDevice(device: AudioDeviceInfo?) {
+        preferredAudioDevice = device
+        _preferredAudioDeviceId.value = device?.id
+        applyPreferredAudioDevice(musicService.player)
+    }
+
+    private fun applyPreferredAudioDevice(player: ExoPlayer) {
+        runCatching { player.setPreferredAudioDevice(preferredAudioDevice) }
+            .onFailure { Timber.e(it, "Failed to set the preferred audio device") }
+    }
 
     fun initialize(): Boolean {
         if (castPlayer != null) return true

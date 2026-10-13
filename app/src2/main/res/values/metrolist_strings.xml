@@ -103,6 +103,7 @@
     <string name="primary_color_style">Primary color</string>
     <string name="tertiary_color_style">Tertiary color</string>
     <string name="display_density">Display density</string>
+    <string name="letterbox">Letterboxing</string>
     <string name="restart">Restart</string>
     <string name="restart_required">Restart required!</string>
     <string name="density_restart_message">The display density change will take effect after restarting the app. Restart now?</string>
@@ -975,6 +976,8 @@
     <string name="not_applicable">N/A</string>
 
     <!-- Stream sources -->
+    <string name="rename_app_spotify">Rename app to \"Spotify\"</string>
+    <string name="rename_app_spotify_desc">Change the launcher name of the app. Your launcher may take a moment to update.</string>
     <string name="enable_dynamic_icon">Dynamic icon colors</string>
     <string name="enable_dynamic_icon_desc">Use dynamic theme colors for the app icon. When disabled, the icon uses solid colors.</string>
     <string name="stream_sources">Stream sources</string>

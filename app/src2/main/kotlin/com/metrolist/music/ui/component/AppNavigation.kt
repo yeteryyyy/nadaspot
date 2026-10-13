@@ -236,6 +236,7 @@ fun AppNavigationBar(
                             text = stringResource(screen.titleId),
                             color = tint,
                             fontSize = 10.sp,
+                            fontFamily = com.metrolist.music.ui.theme.SpotifyFontFamily,
                             fontWeight = FontWeight.Normal,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,

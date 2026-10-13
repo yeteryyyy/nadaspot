@@ -152,6 +152,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_21
     }
 
+    //noinspection WrongGradleMethod
     kotlin {
         jvmToolchain(21)
         compilerOptions {

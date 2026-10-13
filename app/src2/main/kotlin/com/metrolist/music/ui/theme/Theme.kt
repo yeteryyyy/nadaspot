@@ -16,6 +16,7 @@ import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.SaverScope
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.palette.graphics.Palette
@@ -86,10 +87,23 @@ fun MetrolistTheme(
 }
 
 private val SpotifyTypography = Typography().let { t ->
+    fun TextStyle.f() = copy(fontFamily = SpotifyFontFamily)
     t.copy(
-        titleLarge = t.titleLarge.copy(fontWeight = FontWeight.Bold),
-        titleMedium = t.titleMedium.copy(fontWeight = FontWeight.Bold),
-        labelLarge = t.labelLarge.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
+        displayLarge = t.displayLarge.f(),
+        displayMedium = t.displayMedium.f(),
+        displaySmall = t.displaySmall.f(),
+        headlineLarge = t.headlineLarge.f(),
+        headlineMedium = t.headlineMedium.f(),
+        headlineSmall = t.headlineSmall.f(),
+        titleLarge = t.titleLarge.f().copy(fontWeight = FontWeight.Bold),
+        titleMedium = t.titleMedium.f().copy(fontWeight = FontWeight.Bold),
+        titleSmall = t.titleSmall.f(),
+        bodyLarge = t.bodyLarge.f(),
+        bodyMedium = t.bodyMedium.f(),
+        bodySmall = t.bodySmall.f(),
+        labelLarge = t.labelLarge.f().copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
+        labelMedium = t.labelMedium.f(),
+        labelSmall = t.labelSmall.f(),
     )
 }
 

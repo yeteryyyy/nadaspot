@@ -5,6 +5,11 @@
 
 package com.metrolist.music.ui.screens.playlist
 
+import com.metrolist.music.ui.component.ShufflePlayBlockHeight
+import com.metrolist.music.ui.component.ShufflePlayOverlay
+import com.metrolist.music.ui.component.SpotifyHeaderGradient
+import com.metrolist.music.ui.component.SpotifyTopAppBar
+import com.metrolist.music.ui.component.ShufflePlayButton
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.unit.sp
 import android.annotation.SuppressLint
@@ -244,6 +249,7 @@ fun LocalPlaylistScreen(
         BackHandler(onBack = onExitSelectionMode)
     }
 
+    val topBarPlaylistSyncedStr = stringResource(R.string.playlist_synced)
     val downloadUtil = LocalDownloadUtil.current
     var downloadState by remember {
         mutableIntStateOf(Download.STATE_STOPPED)
@@ -477,6 +483,8 @@ fun LocalPlaylistScreen(
     Box(
         modifier = Modifier.fillMaxSize(),
     ) {
+        SpotifyHeaderGradient(lazyListState)
+
         LazyColumn(
             state = lazyListState,
             contentPadding = LocalPlayerAwareWindowInsets.current.union(WindowInsets.ime).asPaddingValues(),
@@ -734,7 +742,18 @@ fun LocalPlaylistScreen(
             headerItems = 2,
         )
 
-        TopAppBar(
+        ShufflePlayOverlay(listState = lazyListState, visible = !isSearching) {
+                            playerConnection.playQueue(
+                                ListQueue(
+                                    title = playlist?.playlist?.name,
+                                    items = songs.shuffled().map { it.song.toMediaItem() },
+                                ),
+                            )
+                        }
+
+        SpotifyTopAppBar(
+            scrolled = showTopBarTitle,
+            forceOpaque = isSearching || inSelectMode,
             title = {
                 if (inSelectMode) {
                     Text(pluralStringResource(R.plurals.n_selected, selection.size, selection.size))
@@ -837,12 +856,59 @@ fun LocalPlaylistScreen(
                         )
                     }
                 } else if (!isSearching) {
-                    // Only search button remains in TopAppBar
                     IconButton(
                         onClick = { isSearching = true },
                     ) {
                         Icon(
                             painter = painterResource(R.drawable.search),
+                            contentDescription = null,
+                        )
+                    }
+                    IconButton(
+                        onClick = {
+                            val pl = playlist ?: return@IconButton
+                            menuState.show {
+                                LocalPlaylistMenu(
+                                    playlist = pl,
+                                    songs = songs,
+                                    context = context,
+                                    downloadState = downloadState,
+                                    onEdit = { showEditDialog = true },
+                                    onSync = {
+                                        coroutineScope.launch(Dispatchers.IO) {
+                                            syncUtils.syncPlaylistSuspend(pl.playlist.browseId!!, pl.id)
+                                            withContext(Dispatchers.Main) {
+                                                snackbarHostState.showSnackbar(topBarPlaylistSyncedStr)
+                                            }
+                                        }
+                                    },
+                                    onDelete = { showDeletePlaylistDialog = true },
+                                    onDownload = {
+                                        when (downloadState) {
+                                            Download.STATE_COMPLETED -> { showRemoveDownloadDialog = true }
+                                            Download.STATE_DOWNLOADING -> {
+                                                songs.forEach { song ->
+                                                    DownloadService.sendRemoveDownload(
+                                                        context,
+                                                        ExoDownloadService::class.java,
+                                                        song.song.id,
+                                                        false,
+                                                    )
+                                                }
+                                            }
+                                            else -> songs.forEach { downloadUtil.download(it.song) }
+                                        }
+                                    },
+                                    onQueue = {
+                                        playerConnection.addToQueue(items = songs.map { it.song.toMediaItem() })
+                                    },
+                                    onDismiss = { menuState.dismiss() },
+                                )
+                            }
+                        },
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.more_vert),
                             contentDescription = null,
                         )
                     }
@@ -1373,48 +1439,8 @@ fun LocalPlaylistHeader(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Action Buttons Row
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // Spotify 2018: one big green SHUFFLE PLAY pill
-            Surface(
-                onClick = {
-                    playerConnection.playQueue(
-                        ListQueue(
-                            title = playlist.playlist.name,
-                            items = songs.shuffled().map { it.song.toMediaItem() },
-                        ),
-                    )
-                },
-                shape = RoundedCornerShape(percent = 50),
-                color = MaterialTheme.colorScheme.primary,
-                modifier =
-                    Modifier
-                        .height(48.dp)
-                        .fillMaxWidth(0.8f),
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = stringResource(R.string.shuffle_play),
-                        color = Color.White,
-                        fontSize = 14.sp,
-                        fontFamily = com.metrolist.music.ui.theme.SpotifyFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 2.sp,
-                        maxLines = 1,
-                    )
-                }
-            }
-        }
+
+        Spacer(modifier = Modifier.height(ShufflePlayBlockHeight))
     }
 }
 

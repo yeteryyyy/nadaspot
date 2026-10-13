@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Spotify 2018 look for the Google Cast dialogs: dark (#282828), square corners, docked to the bottom -->
+    <color name="spotify_cast_sheet">#FF282828</color>
+
+    <style name="Theme.SpotifyCast" parent="Theme.AppCompat.NoActionBar">
+        <item name="colorPrimary">#FF1DB954</item>
+        <item name="colorPrimaryDark">#FF121212</item>
+        <item name="colorAccent">#FF1DB954</item>
+        <item name="colorControlNormal">#FFB3B3B3</item>
+        <item name="colorControlActivated">#FF1DB954</item>
+        <item name="android:colorBackground">@color/spotify_cast_sheet</item>
+        <item name="android:textColorPrimary">#FFFFFFFF</item>
+        <item name="android:textColorSecondary">#FFB3B3B3</item>
+        <item name="dialogTheme">@style/Theme.SpotifyCast.Dialog</item>
+        <item name="alertDialogTheme">@style/Theme.SpotifyCast.Dialog</item>
+    </style>
+
+    <style name="Theme.SpotifyCast.Dialog" parent="Theme.AppCompat.Dialog">
+        <item name="colorPrimary">#FF1DB954</item>
+        <item name="colorAccent">#FF1DB954</item>
+        <item name="colorControlNormal">#FFB3B3B3</item>
+        <item name="colorControlActivated">#FF1DB954</item>
+        <item name="android:colorBackground">@color/spotify_cast_sheet</item>
+        <item name="android:windowBackground">@color/spotify_cast_sheet</item>
+        <item name="android:textColorPrimary">#FFFFFFFF</item>
+        <item name="android:textColorSecondary">#FFB3B3B3</item>
+        <item name="android:windowMinWidthMajor">100%</item>
+        <item name="android:windowMinWidthMinor">100%</item>
+        <item name="android:windowAnimationStyle">@style/SpotifyCastSheetAnimation</item>
+    </style>
+
+    <style name="SpotifyCastSheetAnimation">
+        <item name="android:windowEnterAnimation">@anim/spotify_sheet_in</item>
+        <item name="android:windowExitAnimation">@anim/spotify_sheet_out</item>
+    </style>
+</resources>

@@ -419,29 +419,16 @@ fun Queue(
                 }
             } else {
                 // Old design
-                // Spotify 2018: no buttons here, just a small grab handle; tap or swipe up for the queue
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .height(QueuePeekHeight)
-                            .windowInsetsPadding(
-                                WindowInsets.systemBars
-                                    .only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
-                            ).clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                            ) { state.expandSoft() },
-                ) {
-                    Box(
-                        Modifier
-                            .width(32.dp)
-                            .height(3.dp)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.3f)),
-                    )
-                }
+                // Spotify 2018: no handle; the queue opens from the button in the player's top-right corner
+                Spacer(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(QueuePeekHeight)
+                        .windowInsetsPadding(
+                            WindowInsets.systemBars
+                                .only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
+                        ),
+                )
             }
 
             if (showSleepTimerDialog) {

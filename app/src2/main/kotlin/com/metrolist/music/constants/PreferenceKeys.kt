@@ -50,6 +50,25 @@ enum class DensityScale(
     }
 }
 
+val LetterboxModeKey = stringPreferencesKey("letterbox_mode")
+
+/** Letterboxing (black bars top/bottom) to mimic the tall-but-not-too-tall screens of 2018 flagships. */
+enum class LetterboxMode(
+    val ratio: Float?, // height / width in portrait; null = disabled
+    val label: String,
+) {
+    OFF(null, "Off"),
+    RATIO_16_9(16f / 9f, "16:9 (2016\u201317 flagships)"),
+    RATIO_18_9(18f / 9f, "18:9 (Pixel 3, LG G7, Galaxy A8)"),
+    RATIO_185_9(18.5f / 9f, "18.5:9 (Galaxy S9, Pixel 3 XL)"),
+    RATIO_19_9(19f / 9f, "19:9 (OnePlus 6, Huawei P20 Pro)"),
+    ;
+
+    companion object {
+        fun fromName(name: String?): LetterboxMode = entries.find { it.name == name } ?: OFF
+    }
+}
+
 val DefaultOpenTabKey = stringPreferencesKey("defaultOpenTab")
 val ForceBottomNavBarKey = booleanPreferencesKey("forceBottomNavBar")
 val SlimNavBarKey = booleanPreferencesKey("slimNavBar")
@@ -162,6 +181,7 @@ val PauseSearchHistoryKey = booleanPreferencesKey("pauseSearchHistory")
 val DisableScreenshotKey = booleanPreferencesKey("disableScreenshot")
 
 val EnableDynamicIconKey = booleanPreferencesKey("enableDynamicIcon")
+val RenameAppSpotifyKey = booleanPreferencesKey("renameAppSpotify")
 
 val EnableDiscordRPCKey = booleanPreferencesKey("discordRPCEnable")
 val DiscordInfoDismissedKey = booleanPreferencesKey("discordInfoDismissed")

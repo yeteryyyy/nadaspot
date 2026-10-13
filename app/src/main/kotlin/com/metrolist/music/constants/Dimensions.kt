@@ -19,7 +19,7 @@ const val CONTENT_TYPE_PLAYLIST = 5
 
 val NavigationBarHeight = 56.dp
 val SlimNavBarHeight = 48.dp
-val MiniPlayerHeight = 48.dp
+val MiniPlayerHeight = 52.dp
 val MinMiniPlayerHeight = 16.dp
 val MiniPlayerBottomSpacing = 0.dp // Space between MiniPlayer and NavigationBar
 val QueuePeekHeight = 48.dp
