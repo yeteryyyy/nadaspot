@@ -2,9 +2,9 @@
 
 <img src="fastlane/metadata/android/en-US/images/icon.png" alt="Metrolist app icon" width="200" />
 
-# Metrolist
+# Nadaspot
 
-### YouTube Music client for Android
+### Metrolist fork, overhauled to reflect the look of the 2018 Spotify Android client
 
 <br/>
 
@@ -31,11 +31,6 @@
 </div>
 
 > [!WARNING]
-> # MAINTENANCE MODE
-> Metrolist is currently in maintenance mode. This means we will only be fixing bugs and making minor improvements. Please do not submit PRs for new features or major changes, as they will not be accepted.  
-> The app is **NOT** dead, please stay tuned for updates on our discord (found above).
-
-> [!WARNING]
 > **Regional Restriction** - If YouTube Music is unavailable in your region, this app will not work without a **VPN or proxy** connecting to a supported region.
 
 ---
@@ -44,12 +39,10 @@
 
 <h1><a id="screenshots"></a>Screenshots</h1>
 
-<img src="fastlane/metadata/android/en-US/images/screenshots/screenshot_1.png" alt="Home screen" width="30%" />
-<img src="fastlane/metadata/android/en-US/images/screenshots/screenshot_2.png" alt="Artist screen" width="30%" />
-<img src="fastlane/metadata/android/en-US/images/screenshots/screenshot_3.png" alt="Recognize music screen" width="30%" />
-<img src="fastlane/metadata/android/en-US/images/screenshots/screenshot_4.png" alt="Listen together screen" width="30%" />
-<img src="fastlane/metadata/android/en-US/images/screenshots/screenshot_5.png" alt="Player screen" width="30%" />
-<img src="fastlane/metadata/android/en-US/images/screenshots/screenshot_6.png" alt="Player lyrics screen" width="30%" />
+<img src="fastlane/metadata/android/en-US/images/screenshots/screenshot_1.png" alt="Library" width="30%" />
+<img src="fastlane/metadata/android/en-US/images/screenshots/screenshot_2.png" alt="Artist" width="30%" />
+<img src="fastlane/metadata/android/en-US/images/screenshots/screenshot_5.png" alt="Player width="30%" />
+<img src="fastlane/metadata/android/en-US/images/screenshots/screenshot_6.png" alt="Search" width="30%" />
 
 </div>
 
